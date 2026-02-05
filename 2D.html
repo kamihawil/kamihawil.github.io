@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homology Demo 2D</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            gap: 15px;
+            max-width: 1400px;
+            margin: 15px auto;
+            height: calc(100vh - 30px);
+        }
+
+        .main-panel {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 15px;
+        }
+
+        .controls-panel {
+            width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .slider-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .slider-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            font-variant-numeric: tabular-nums;
+            min-width: 60px;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+            width: 190px;
+        }
+
+        input[type="checkbox"] {
+            cursor: pointer;
+            accent-color: #2c3e50;
+        }
+
+        /* Canvas Area */
+        .viewport {
+            flex: 1;
+            position: relative;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background: #fafafa;
+            overflow: hidden;
+            margin-bottom: 10px;
+            transition: background 0.3s;
+        }
+
+        .zoom-hint {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #666;
+            pointer-events: none;
+            border: 1px solid #ddd;
+        }
+
+        /* Barcode Area */
+        .barcode-container {
+            height: 28%;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .barcode-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: 1px solid #eee;
+            background: #fff;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        /* Buttons */
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #34495e;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #2c3e50;
+            transform: translateX(2px);
+        }
+
+        .category {
+            font-size: 11px;
+            font-weight: 800;
+            color: #999;
+            margin: 15px 0 5px;
+            text-transform: uppercase;
+        }
+
+        .toggle {
+            background: #ecf0f1;
+            color: #333;
+            text-align: center;
+        }
+
+        .toggle.active {
+            background: #27ae60;
+            color: white;
+        }
+
+        /* Dark Theme */
+        body.dark {
+            background: #121212;
+            color: #e0e0e0;
+        }
+
+        body.dark .main-panel {
+            background: #1e1e1e;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        body.dark .title {
+            color: #e0e0e0;
+        }
+
+        body.dark .header {
+            border-bottom-color: #333;
+        }
+
+        body.dark .checkbox-label {
+            color: #aaa;
+        }
+
+        body.dark .slider-box {
+            background: #2c2c2c;
+            border-color: #333;
+        }
+
+        body.dark .slider-val {
+            color: #ccc;
+        }
+
+        body.dark .viewport {
+            background: #121212;
+            border-color: #333;
+        }
+
+        body.dark .zoom-hint {
+            background: rgba(30, 30, 30, 0.9);
+            color: #aaa;
+            border-color: #444;
+        }
+
+        body.dark .barcode-container {
+            border-top-color: #333;
+        }
+
+        body.dark .barcode-scroll {
+            background: #1e1e1e;
+            border-color: #333;
+        }
+
+        body.dark .category {
+            color: #666;
+        }
+
+        body.dark .toggle {
+            background: #333;
+            color: #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const PRESETS = {
+            randomScatter: () => Array.from({ length: 25 }, () => [2 + Math.random() * 6, 2 + Math.random() * 6]),
+            twoPoints: () => [[4, 5], [6, 5]],
+            threePoints: () => [[4, 5], [6, 5], [5, 6.7]],
+            squareEmpty: () => [[3.5, 3.5], [6.5, 3.5], [6.5, 6.5], [3.5, 6.5]],
+            ring: () => {
+                const m = 12, R = 2.5, c = [5, 5];
+                return Array.from({ length: m }, (_, i) => {
+                    const t = (2 * Math.PI * i) / m;
+                    return [c[0] + R * Math.cos(t), c[1] + R * Math.sin(t)];
+                });
+            },
+            smallring: () => {
+                const m = 8, R = 2.5, c = [5, 5];
+                return Array.from({ length: m }, (_, i) => {
+                    const t = (2 * Math.PI * i) / m;
+                    return [c[0] + R * Math.cos(t), c[1] + R * Math.sin(t)];
+                });
+            },
+            nestedRings: () => {
+                const pts = [];
+                for (let i = 0; i < 8; i++) {
+                    const t = (2 * Math.PI * i) / 8;
+                    pts.push([5 + 1.3 * Math.cos(t), 5 + 1.3 * Math.sin(t)]);
+                }
+                for (let i = 0; i < 16; i++) {
+                    const t = (2 * Math.PI * i) / 16;
+                    pts.push([5 + 4.0 * Math.cos(t), 5 + 4.0 * Math.sin(t)]);
+                }
+                return pts.map(p => [p[0] + (Math.random() - 0.5) * 0.1, p[1] + (Math.random() - 0.5) * 0.1]);
+            },
+            randomSponge: () => {
+                const pts = [];
+                for (let k = 0; k < 4; k++) {
+                    const cx = 2 + Math.random() * 6, cy = 2 + Math.random() * 6;
+                    const r = 1.0 + Math.random() * 1.5;
+                    const n = Math.floor(r * 5) + 3;
+                    for (let i = 0; i < n; i++) {
+                        const t = (Math.PI * 2 * i) / n;
+                        pts.push([cx + Math.cos(t) * r + (Math.random() - 0.5) * 0.2, cy + Math.sin(t) * r + (Math.random() - 0.5) * 0.2]);
+                    }
+                }
+                return pts;
+            },
+            noisyLoop: () => {
+                const n = 14, R = 3, c = [5, 5], pts = [];
+                for (let i = 0; i < n; i++) {
+                    const t = (2 * Math.PI * i) / n;
+                    pts.push([c[0] + R * Math.cos(t) + (Math.random() - 0.5) * 0.5, c[1] + R * Math.sin(t) + (Math.random() - 0.5) * 0.5]);
+                }
+                return pts;
+            },
+            smallnoisyLoop5: () => {
+                const n = 5, R = 3, c = [5, 5], pts = [];
+                for (let i = 0; i < n; i++) {
+                    const t = (2 * Math.PI * i) / n;
+                    pts.push([c[0] + R * Math.cos(t) + (Math.random() - 0.5) * 0.5, c[1] + R * Math.sin(t) + (Math.random() - 0.5) * 0.5]);
+                }
+                return pts;
+            },
+            smallnoisyLoop6: () => {
+                const n = 6, R = 3, c = [5, 5], pts = [];
+                for (let i = 0; i < n; i++) {
+                    const t = (2 * Math.PI * i) / n;
+                    pts.push([c[0] + R * Math.cos(t) + (Math.random() - 0.5) * 0.5, c[1] + R * Math.sin(t) + (Math.random() - 0.5) * 0.5]);
+                }
+                return pts;
+            }
+
+        };
+
+        const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
+
+        function computePersistence(points) {
+            const N = points.length;
+            const simplices = [];
+            const dMap = new Map();
+
+            for (let i = 0; i < N; i++) simplices.push({ b: 0, dim: 0, n: [i] });
+            for (let i = 0; i < N; i++) {
+                for (let j = i + 1; j < N; j++) {
+                    const d = dist(points[i], points[j]);
+                    dMap.set(`${i},${j}`, d);
+                    simplices.push({ b: d / 2, dim: 1, n: [i, j] });
+                }
+            }
+            for (let i = 0; i < N; i++) {
+                for (let j = i + 1; j < N; j++) {
+                    for (let k = j + 1; k < N; k++) {
+                        const d1 = dMap.get(`${i},${j}`), d2 = dMap.get(`${j},${k}`), d3 = dMap.get(`${i},${k}`);
+                        if (d1 === undefined || d2 === undefined || d3 === undefined) continue;
+                        simplices.push({ b: Math.max(d1, d2, d3) / 2, dim: 2, n: [i, j, k] });
+                    }
+                }
+            }
+
+            simplices.sort((a, b) => (a.b - b.b) || (a.dim - b.dim));
+            const sMap = new Map();
+            simplices.forEach((s, i) => { s.id = i; sMap.set(s.n.join(','), i); });
+
+            const pivots = new Map();
+            const reduced = new Map();
+            for (let j = 0; j < simplices.length; j++) {
+                const s = simplices[j];
+                if (s.dim === 0) continue;
+
+                let bound = new Set();
+                if (s.dim === 1) {
+                    bound.add(sMap.get(s.n[0].toString()));
+                    bound.add(sMap.get(s.n[1].toString()));
+                } else if (s.dim === 2) {
+                    const [u, v, w] = s.n;
+                    bound.add(sMap.get(`${u},${v}`));
+                    bound.add(sMap.get(`${u},${w}`));
+                    bound.add(sMap.get(`${v},${w}`));
+                }
+
+                while (bound.size > 0) {
+                    const row = Math.max(...bound);
+                    if (pivots.has(row)) {
+                        const killer = pivots.get(row);
+                        const kBound = reduced.get(killer);
+                        for (const x of kBound) bound.has(x) ? bound.delete(x) : bound.add(x);
+                    } else {
+                        pivots.set(row, j);
+                        reduced.set(j, bound);
+                        break;
+                    }
+                }
+            }
+
+            const h0 = [], h1 = [];
+            const killers = new Set(pivots.values());
+            for (let i = 0; i < simplices.length; i++) {
+                const s = simplices[i];
+                if (killers.has(i)) continue;
+                const deathIdx = pivots.get(i);
+                const death = deathIdx !== undefined ? simplices[deathIdx].b : Infinity;
+                if (death > s.b) {
+                    if (s.dim === 0) h0.push([s.b, death]);
+                    if (s.dim === 1) h1.push([s.b, death]);
+                }
+            }
+            const sortFn = (a, b) => (b[1] - b[0]) - (a[1] - a[0]);
+            h0.sort(sortFn); h1.sort(sortFn);
+            return { h0, h1, dMap };
+        }
+
+        function HomologyDemo() {
+            const [points, setPointsInternal] = useState(PRESETS.noisyLoop());
+            const [radius, setRadius] = useState(0.5);
+            const [isDark, setIsDark] = useState(false);
+            const [showBalls, setShowBalls] = useState(true);
+            const [resetOnPreset, setResetOnPreset] = useState(true);
+            const [data, setData] = useState(null);
+
+            const [view, setView] = useState({ x: 350, y: 0, scale: 50 });
+            const [drag, setDrag] = useState(false);
+            const [lastM, setLastM] = useState({ x: 0, y: 0 });
+
+            const canvasRef = useRef(null);
+            const barcodeRef = useRef(null);
+
+            const loadPreset = (generatorFn) => {
+                setPointsInternal(generatorFn());
+                if (resetOnPreset) setRadius(0);
+            };
+
+            // --- EXPOSE API TO CONSOLE ---
+            useEffect(() => {
+                window.homology = {
+                    // 1. Get current points
+                    getPoints: () => points,
+
+                    // 2. Set new points (and calculate)
+                    setPoints: (newPoints) => {
+                        if (Array.isArray(newPoints)) {
+                            setPointsInternal(newPoints);
+                            console.log(`Updated: ${newPoints.length} points set.`);
+                        } else {
+                            console.error("Points must be an array of [x,y] arrays");
+                        }
+                    },
+
+                    getData: () => data,
+
+                    setBg: (color) => {
+                        const viewport = document.querySelector('.viewport');
+                        if (viewport) viewport.style.background = color;
+                    }
+                };
+            }, [points, data]);
+
+            useEffect(() => { setData(computePersistence(points)); }, [points]);
+
+            useEffect(() => {
+                document.body.className = isDark ? 'dark' : '';
+            }, [isDark]);
+
+            useEffect(() => {
+                if (!data || !canvasRef.current) return;
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                canvas.width = canvas.parentElement.clientWidth;
+                canvas.height = canvas.parentElement.clientHeight;
+
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const toScrn = (p) => [view.x + p[0] * view.scale, view.y + (10 - p[1]) * view.scale];
+
+                const colors = isDark ? {
+                    tri: 'rgba(52, 152, 219, 0.3)',
+                    edge: '#bdc3c7',
+                    pt: '#ecf0f1',
+                    ballFill: 'rgba(255, 255, 255, 0.08)',
+                    ballStroke: 'rgba(255, 255, 255, 0.1)'
+                } : {
+                    tri: 'rgba(52, 152, 219, 0.4)',
+                    edge: '#2c3e50',
+                    pt: '#2c3e50',
+                    ballFill: 'rgba(149, 165, 166, 0.1)',
+                    ballStroke: 'rgba(149, 165, 166, 0.5)'
+                };
+
+                ctx.fillStyle = colors.tri;
+                for (let i = 0; i < points.length; i++) {
+                    for (let j = i + 1; j < points.length; j++) {
+                        if (data.dMap.get(`${i},${j}`) > 2 * radius) continue;
+                        for (let k = j + 1; k < points.length; k++) {
+                            const d2 = data.dMap.get(`${j},${k}`), d3 = data.dMap.get(`${i},${k}`);
+                            if (d2 <= 2 * radius && d3 <= 2 * radius) {
+                                const [p1, p2, p3] = [points[i], points[j], points[k]].map(toScrn);
+                                ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]); ctx.fill();
+                            }
+                        }
+                    }
+                }
+
+                ctx.strokeStyle = colors.edge; ctx.lineWidth = 2;
+                for (let i = 0; i < points.length; i++) {
+                    for (let j = i + 1; j < points.length; j++) {
+                        if (data.dMap.get(`${i},${j}`) <= 2 * radius) {
+                            const [p1, p2] = [points[i], points[j]].map(toScrn);
+                            ctx.beginPath(); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.stroke();
+                        }
+                    }
+                }
+
+                if (showBalls) {
+                    ctx.fillStyle = colors.ballFill;
+                    ctx.strokeStyle = colors.ballStroke;
+                    ctx.lineWidth = 1;
+                    points.forEach(p => {
+                        const [x, y] = toScrn(p);
+                        ctx.beginPath();
+                        ctx.arc(x, y, radius * view.scale, 0, Math.PI * 2);
+                        ctx.fill(); ctx.stroke();
+                    });
+                }
+
+                ctx.fillStyle = colors.pt;
+                points.forEach(p => {
+                    const [x, y] = toScrn(p);
+                    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill();
+                });
+            }, [data, radius, points, showBalls, view, isDark]);
+
+            useEffect(() => {
+                if (!data || !barcodeRef.current) return;
+                const canvas = barcodeRef.current;
+                const ctx = canvas.getContext('2d');
+
+                const rowH = 8;
+                const gap = 3;
+                const headH = 20;
+                const pad = 10;
+
+                const h0Count = data.h0.length;
+                const h1Count = data.h1.length;
+                const maxRows = Math.max(h0Count, h1Count);
+                const contentH = headH + (maxRows * (rowH + gap)) + 20;
+
+                const w = canvas.parentElement.clientWidth - 10;
+                canvas.width = w;
+                canvas.height = Math.max(contentH, canvas.parentElement.clientHeight);
+                const halfW = (w - 3 * pad) / 2;
+                const scaleX = halfW / 4.5;
+
+                ctx.clearRect(0, 0, w, canvas.height);
+
+                const theme = isDark ? { text: '#aaa', dead: '#444', grid: '#333' } : { text: '#666', dead: '#bdc3c7', grid: '#eee' };
+
+                const drawStack = (bars, startX, color, label) => {
+                    ctx.fillStyle = theme.text;
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.fillText(label, startX, 15);
+
+                    let y = headH;
+                    ctx.lineWidth = rowH - 2;
+                    ctx.lineCap = 'round';
+
+                    bars.forEach(([start, end]) => {
+                        const isAlive = (radius >= start && radius < end);
+                        if (start <= radius) {
+                            ctx.strokeStyle = isAlive ? color : color.replace('1)', '0.3)');
+                            if (!isAlive) ctx.strokeStyle = theme.dead;
+
+                            const visEnd = Math.min(end === Infinity ? 4.5 : end, radius);
+                            if (visEnd >= start) {
+                                const x1 = startX + start * scaleX;
+                                const x2 = startX + visEnd * scaleX;
+                                ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+                            }
+                        }
+                        y += rowH + gap;
+                    });
+
+                    const scanX = startX + radius * scaleX;
+                    if (scanX <= startX + halfW) {
+                        ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.moveTo(scanX, headH); ctx.lineTo(scanX, Math.max(y, canvas.height)); ctx.stroke();
+                    }
+                };
+
+                drawStack(data.h0, pad, 'rgb(52, 152, 219)', 'H0 (Components)');
+                drawStack(data.h1, pad + halfW + pad, 'rgb(230, 126, 34)', 'H1 (Loops)');
+
+                ctx.strokeStyle = theme.grid;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(pad + halfW + pad / 2, 5);
+                ctx.lineTo(pad + halfW + pad / 2, canvas.height);
+                ctx.stroke();
+
+            }, [data, radius, isDark]);
+
+            const wheel = (e) => {
+                e.preventDefault();
+                const rate = 1.05, dir = e.deltaY > 0 ? 1 / rate : rate;
+                const rect = canvasRef.current.getBoundingClientRect();
+                const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                setView(v => ({ scale: v.scale * dir, x: mx - (mx - v.x) * dir, y: my - (my - v.y) * dir }));
+            };
+            const move = (e) => {
+                if (!drag) return;
+                const dx = e.clientX - lastM.x, dy = e.clientY - lastM.y;
+                setLastM({ x: e.clientX, y: e.clientY });
+                setView(v => ({ ...v, x: v.x + dx, y: v.y + dy }));
+            };
+
+            return (
+                <div className="container">
+                    <div className="main-panel">
+                        <div className="header">
+                            <h2 className="title">Homology Demo</h2>
+
+                            <div className="header-controls">
+                                <label className="checkbox-label">
+                                    <input type="checkbox" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
+                                    Dark
+                                </label>
+                                <label className="checkbox-label">
+                                    <input
+                                        type="checkbox"
+                                        checked={resetOnPreset}
+                                        onChange={(e) => setResetOnPreset(e.target.checked)}
+                                    />
+                                    Auto-Reset
+                                </label>
+                                <div className="slider-box">
+                                    <span className="slider-val">r = {radius.toFixed(2)}</span>
+                                    <input type="range" min="0" max="4" step="0.01" value={radius} onChange={e => setRadius(parseFloat(e.target.value))} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="viewport">
+                            <div className="zoom-hint">Scroll to Zoom • Drag to Pan</div>
+                            <canvas ref={canvasRef} onWheel={wheel} onMouseDown={e => { setDrag(true); setLastM({ x: e.clientX, y: e.clientY }) }} onMouseMove={move} onMouseUp={() => setDrag(false)} onMouseLeave={() => setDrag(false)} />
+                        </div>
+
+                        <div className="barcode-container">
+                            <div className="barcode-scroll">
+                                <canvas ref={barcodeRef} />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="controls-panel">
+                        <div className="category">Presets</div>
+                        <button onClick={() => loadPreset(PRESETS.randomScatter)}>Random Scatter</button>
+                        <button onClick={() => loadPreset(PRESETS.twoPoints)}>Two Points</button>
+                        <button onClick={() => loadPreset(PRESETS.threePoints)}>Three Points</button>
+                        <button onClick={() => loadPreset(PRESETS.squareEmpty)}>Square</button>
+
+                        <div className="category">Topology</div>
+                        <button onClick={() => loadPreset(PRESETS.ring)}>Ring</button>
+                        <button onClick={() => loadPreset(PRESETS.smallring)}>small Ring</button>
+                        <button onClick={() => loadPreset(PRESETS.nestedRings)}>Nested Rings</button>
+                        <button onClick={() => loadPreset(PRESETS.noisyLoop)}>Noisy Loop</button>
+                        <button onClick={() => loadPreset(PRESETS.smallnoisyLoop5)}>Small Noisy Loop Penta</button>
+                        <button onClick={() => loadPreset(PRESETS.smallnoisyLoop6)}>Small Noisy Loop Hexa</button>
+                        <button onClick={() => loadPreset(PRESETS.randomSponge)}>Random Sponge</button>
+
+                        <div className="category">View</div>
+                        <button className={`toggle ${showBalls ? 'active' : ''}`} onClick={() => setShowBalls(!showBalls)}>Balls</button>
+                        <button style={{ marginTop: '10px', background: '#7f8c8d' }} onClick={() => setView({ x: 350, y: 0, scale: 50 })}>Reset View</button>
+                    </div>
+                </div>
+            );
+        }
+        ReactDOM.render(<HomologyDemo />, document.getElementById('root'));
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,2620 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homology Seminar Interactive</title>
+
+    <!-- React & Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- KaTeX -->
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <style>
+        :root {
+            --bg-body: #f4f1ea;
+            --bg-canvas: #f8f4ee;
+            --bg-panel: rgba(255, 255, 255, 0.96);
+            --bg-panel-solid: #ffffff;
+            --bg-soft: #f3ede4;
+
+            --text-main: #111827;
+            --text-muted: #475569;
+            --text-sub: #64748b;
+
+            --primary: #0f766e;
+            --primary-glow: rgba(15, 118, 110, 0.45);
+            --accent: #f97316;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+
+            --border: #d8cbb9;
+            --shadow: 0 18px 40px -24px rgba(20, 35, 46, 0.35);
+            --glass-shadow: 0 10px 30px rgba(17, 24, 39, 0.08);
+
+            --font-ui: 'Space Grotesk', sans-serif;
+            --font-mono: 'IBM Plex Mono', monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg-body);
+            color: var(--text-main);
+            font-family: var(--font-ui);
+            overflow: hidden;
+            font-size: 16px;
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(700px circle at 10% 15%, rgba(14, 165, 164, 0.12), transparent 60%),
+                radial-gradient(700px circle at 90% 85%, rgba(249, 115, 22, 0.1), transparent 60%),
+                linear-gradient(135deg, #f6f1e9 0%, #f1f5f9 100%);
+            z-index: -2;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(120deg, rgba(31, 41, 55, 0.04) 0%, rgba(31, 41, 55, 0.02) 100%),
+                repeating-linear-gradient(0deg, rgba(15, 23, 42, 0.03), rgba(15, 23, 42, 0.03) 1px, transparent 1px, transparent 6px);
+            opacity: 0.2;
+            mix-blend-mode: multiply;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .app {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: clamp(280px, 24vw, 360px) minmax(0, 1fr) clamp(320px, 30vw, 440px);
+            gap: 20px;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(600px circle at 20% 10%, rgba(14, 165, 164, 0.18), transparent 60%),
+                radial-gradient(800px circle at 85% 85%, rgba(249, 115, 22, 0.14), transparent 65%),
+                linear-gradient(145deg, #fbf7f2 0%, #eef2f7 100%);
+            min-width: 0;
+            overflow: hidden;
+            cursor: default;
+            box-shadow: inset -12px 0 25px rgba(15, 23, 42, 0.04);
+            border-radius: 18px;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            outline: none;
+        }
+
+        .panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            border-radius: 18px;
+            overflow: hidden;
+            z-index: 2;
+            box-shadow: var(--glass-shadow);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
+        .panel-header {
+            padding: 24px 24px 16px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(120deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.6));
+        }
+
+        .panel-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-main);
+            letter-spacing: -0.02em;
+        }
+
+        .panel-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 22px 24px;
+            user-select: text;
+        }
+
+        .panel-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .panel-body::-webkit-scrollbar-thumb {
+            background-color: #cbbfae;
+            border-radius: 3px;
+        }
+
+        .panel-body::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .section {
+            margin-bottom: 26px;
+        }
+
+        .section-title {
+            font-size: 0.76rem;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--text-sub);
+            margin: 0 0 12px 0;
+        }
+
+        .controls-section {
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid var(--border);
+            padding: 14px;
+            border-radius: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .control-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .control-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+        }
+
+        .control-note {
+            font-size: 0.78rem;
+            color: var(--text-sub);
+        }
+
+        .segmented-control {
+            display: flex;
+            background: #efe7db;
+            padding: 4px;
+            border-radius: 10px;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .seg-btn {
+            flex: 1;
+            padding: 7px 8px;
+            text-align: center;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 8px;
+            color: var(--text-muted);
+            border: none;
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .seg-btn.active {
+            background: var(--text-main);
+            color: #fff;
+            box-shadow: 0 4px 10px rgba(15, 23, 42, 0.2);
+        }
+
+        .seg-btn:hover {
+            color: var(--text-main);
+        }
+
+        .homology-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+
+        .group-card {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .group-card::after {
+            content: '';
+            position: absolute;
+            right: -20px;
+            top: -30px;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(14, 165, 164, 0.18), transparent 70%);
+        }
+
+        .group-card.nontrivial {
+            border-color: rgba(22, 163, 74, 0.6);
+        }
+
+        .group-card.trivial {
+            border-color: var(--border);
+        }
+
+        .group-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-sub);
+        }
+
+        .group-dim {
+            font-family: var(--font-mono);
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .group-structure {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+        }
+
+        .group-status {
+            align-self: flex-start;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            background: #efe7db;
+            color: var(--text-muted);
+        }
+
+        .group-card.nontrivial .group-status {
+            background: rgba(22, 163, 74, 0.15);
+            color: #166534;
+        }
+
+        .insight-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .insight {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            background: var(--bg-soft);
+            border: 1px dashed var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            color: var(--text-muted);
+        }
+
+        .insight .material-icons-round {
+            font-size: 20px;
+            color: var(--accent);
+        }
+
+        .insight-title {
+            font-weight: 600;
+            color: var(--text-main);
+            font-size: 0.85rem;
+        }
+
+        .insight-sub {
+            font-size: 0.78rem;
+            color: var(--text-sub);
+            margin-top: 2px;
+        }
+
+        .chain-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .chain-block {
+            min-width: 110px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            text-align: center;
+            box-shadow: var(--glass-shadow);
+        }
+
+        .chain-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-sub);
+        }
+
+        .chain-val {
+            font-family: var(--font-mono);
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 4px;
+        }
+
+        .chain-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .chain-arrow {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .metric-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .metric-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-sub);
+        }
+
+        .metric-val {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 6px;
+        }
+
+        .metric-note {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .dim-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .dim-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+
+        .dim-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-sub);
+        }
+
+        .dim-val {
+            font-family: var(--font-mono);
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 6px;
+        }
+
+        .dim-note {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .status-detail {
+            font-size: 0.72rem;
+            font-weight: 500;
+            margin-top: 2px;
+            color: inherit;
+            opacity: 0.8;
+        }
+
+        .mini-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .mini-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 10px;
+        }
+
+        .mini-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-sub);
+        }
+
+        .mini-val {
+            font-family: var(--font-mono);
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-top: 6px;
+        }
+
+        .action-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .action-btn {
+            border: 1px solid var(--border);
+            background: #fff;
+            color: var(--text-main);
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:hover {
+            border-color: #c9bba8;
+            background: #faf7f2;
+        }
+
+        .action-btn.secondary {
+            color: var(--text-muted);
+            background: #f8fafc;
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .lesson-card {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+            animation: fadeIn 0.4s ease;
+        }
+
+        .lesson-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.78rem;
+            color: var(--text-sub);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+
+        .lesson-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin: 14px 0 8px;
+            color: var(--text-main);
+        }
+
+        .lesson-status {
+            margin-top: 10px;
+            font-size: 0.82rem;
+            color: var(--text-sub);
+        }
+
+        .lesson-check {
+            margin-top: 10px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #f8fafc;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+        }
+
+        .status-lines {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+        }
+
+        .status-line {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .status-key {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: var(--text-sub);
+            font-weight: 700;
+        }
+
+        .status-value {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .status-note {
+            margin-top: 12px;
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 8px 10px;
+            border: 1px solid rgba(226, 232, 240, 0.9);
+        }
+
+        .status-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .status-item {
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            text-align: left;
+            cursor: default;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .status-item.active {
+            border-color: rgba(15, 118, 110, 0.4);
+            box-shadow: 0 8px 18px -14px rgba(15, 118, 110, 0.4);
+        }
+
+        .status-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .status-meta {
+            font-size: 0.72rem;
+            color: var(--text-sub);
+            margin-top: 4px;
+        }
+
+        .status-state {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .status-item.active .status-state {
+            color: #0f766e;
+        }
+
+        .slide-container {
+            animation: fadeIn 0.4s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(6px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-title {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin: 0 0 16px 0;
+            letter-spacing: -0.02em;
+        }
+
+        .latex-block {
+            background: #fff;
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+            box-shadow: var(--glass-shadow);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80px;
+        }
+
+        .latex-block.compact {
+            padding: 14px;
+            min-height: auto;
+        }
+
+        .latex-block.compact .katex-display {
+            margin: 0;
+            max-width: 100%;
+        }
+
+        .latex-block.compact .katex {
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .foundation-note {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.55;
+            margin-top: -6px;
+        }
+
+        .lesson-nav {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 12px;
+        }
+
+        .lesson-nav .nav-btn {
+            padding: 10px 12px;
+            font-size: 0.85rem;
+        }
+
+        .prose {
+            color: var(--text-muted);
+            line-height: 1.6;
+            font-size: 0.95rem;
+            margin-bottom: 20px;
+        }
+
+        .matrix-section {
+            margin-top: 12px;
+        }
+
+        .matrix-header {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-main);
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .matrix-sub {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .matrix-tabs {
+            display: inline-flex;
+            gap: 6px;
+            background: #efe7db;
+            padding: 4px;
+            border-radius: 999px;
+        }
+
+        .tab-btn {
+            border: none;
+            background: transparent;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .tab-btn.active {
+            background: var(--text-main);
+            color: #fff;
+        }
+
+        .matrix-container {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03);
+            background: #fff;
+            padding: 8px;
+        }
+
+        .matrix-table {
+            border-collapse: separate;
+            border-spacing: 4px;
+            width: 100%;
+        }
+
+        .matrix-table th,
+        .matrix-table td {
+            width: 26px;
+            height: 26px;
+            text-align: center;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            cursor: default;
+        }
+
+        .matrix-table th {
+            color: var(--text-sub);
+            font-weight: 600;
+            background: transparent;
+        }
+
+        .matrix-table th.active-dimension {
+            color: var(--primary);
+        }
+
+        .row-header,
+        .col-header {
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        .cell {
+            background: #f1f1f5;
+            color: #b8c0cc;
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .cell.one {
+            background: #c7d2d9;
+            color: #fff;
+            font-weight: 700;
+        }
+
+        .cell.active {
+            background: var(--primary);
+            color: #fff;
+            transform: scale(1.15);
+            box-shadow: 0 2px 8px var(--primary-glow);
+        }
+
+        .toolbar-group {
+            position: absolute;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 6px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 12px 40px -12px rgba(0, 0, 0, 0.2);
+            z-index: 999;
+        }
+
+        .toast-wrap {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+
+        .toast {
+            min-width: 220px;
+            max-width: 320px;
+            background: rgba(255, 255, 255, 0.96);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px 12px;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.15);
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            animation: toastIn 0.2s ease;
+        }
+
+        .toast-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .toast-desc {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .toast.boundary {
+            border-color: rgba(22, 163, 74, 0.35);
+            background: rgba(240, 253, 244, 0.95);
+        }
+
+        .toast.cycle {
+            border-color: rgba(14, 165, 233, 0.35);
+            background: rgba(224, 242, 254, 0.95);
+        }
+
+        .toast.nontrivial {
+            border-color: rgba(14, 165, 233, 0.35);
+            background: rgba(224, 242, 254, 0.95);
+        }
+
+        @keyframes toastIn {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .tool-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: grid;
+            place-items: center;
+            transition: all 0.2s ease;
+        }
+
+        .tool-btn .material-icons-round {
+            font-size: 24px;
+        }
+
+        .tool-btn:hover {
+            background: rgba(15, 23, 42, 0.06);
+            color: var(--text-main);
+        }
+
+        .tool-btn.active {
+            background: var(--primary);
+            color: #fff;
+            box-shadow: 0 6px 16px var(--primary-glow);
+        }
+
+        .tool-divider {
+            width: 1px;
+            background: var(--border);
+            margin: 4px 0;
+        }
+
+        .nav-footer {
+            padding: 18px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.92);
+            align-items: center;
+        }
+
+        .nav-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 0.92rem;
+            cursor: pointer;
+            background: #fff;
+            color: var(--text-main);
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .nav-btn:hover:not(:disabled) {
+            background: #f6f2ea;
+            border-color: #d9cdbd;
+            transform: translateY(-1px);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f1efe9;
+        }
+
+        .nav-btn.primary {
+            background: var(--text-main);
+            color: #fff;
+            border-color: var(--text-main);
+        }
+
+        .nav-btn.primary:hover:not(:disabled) {
+            background: #111827;
+            box-shadow: 0 6px 16px rgba(17, 24, 39, 0.2);
+        }
+
+        .progress-text {
+            font-family: var(--font-mono);
+            color: var(--text-sub);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 1600px) {
+            .app {
+                grid-template-columns: clamp(260px, 22vw, 320px) minmax(0, 1fr) clamp(300px, 28vw, 400px);
+            }
+
+            .panel-header {
+                padding: 20px 20px 12px;
+            }
+
+            .panel-body {
+                padding: 16px 18px 20px;
+            }
+
+            .section {
+                margin-bottom: 18px;
+            }
+
+            .homology-grid {
+                grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            }
+
+            .insight-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            }
+
+            .group-dim {
+                font-size: 1.05rem;
+            }
+        }
+
+        @media (max-height: 1080px) {
+            .panel-body {
+                padding: 16px 18px 40px;
+            }
+
+            .section {
+                margin-bottom: 18px;
+            }
+
+            .slide-title {
+                font-size: 1.25rem;
+            }
+
+            .prose {
+                font-size: 0.92rem;
+            }
+
+            .matrix-table th,
+            .matrix-table td {
+                width: 24px;
+                height: 24px;
+            }
+
+            .nav-footer {
+                padding: 12px 16px;
+            }
+        }
+
+        @media (max-width: 980px) {
+            body {
+                overflow: auto;
+            }
+
+            .app {
+                height: auto;
+                min-height: 100vh;
+                grid-template-columns: 1fr;
+                grid-auto-rows: auto;
+                padding: 16px;
+            }
+
+            .panel {
+                width: 100%;
+                border-radius: 0;
+                border: 1px solid var(--border);
+                border-top: 1px solid var(--border);
+                box-shadow: none;
+            }
+
+            .viewport {
+                height: 60vh;
+                border-radius: 14px;
+            }
+
+            .toolbar-group {
+                bottom: 16px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .segmented-control {
+                min-width: 100%;
+            }
+
+            .chain-block {
+                min-width: 100px;
+                flex: 1;
+            }
+
+            .nav-footer {
+                flex-direction: column;
+            }
+
+            .nav-btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+
+        // --- MATH CORE ---
+        // Efficient Rank Calculation over GF(2)
+        function computeRank(matrix) {
+            if (matrix.length === 0) return 0;
+            const R = matrix.length, C = matrix[0].length;
+            let mat = matrix.map(row => [...row]); // Deep copy
+            let rank = 0;
+            for (let c = 0; c < C && rank < R; c++) {
+                let pivot = -1;
+                for (let r = rank; r < R; r++) if (mat[r][c] === 1) { pivot = r; break; }
+                if (pivot !== -1) {
+                    [mat[rank], mat[pivot]] = [mat[pivot], mat[rank]];
+                    for (let r = 0; r < R; r++) if (r !== rank && mat[r][c] === 1) {
+                        for (let k = c; k < C; k++) mat[r][k] ^= mat[rank][k];
+                    }
+                    rank++;
+                }
+            }
+            return rank;
+        }
+
+        function isVectorInColumnSpace(matrix, vector) {
+            if (matrix.length === 0) return vector.every(v => v === 0);
+            const rows = matrix.length;
+            const cols = matrix[0].length;
+            const mat = matrix.map((row, r) => [...row, vector[r] || 0]);
+            let rank = 0;
+            for (let c = 0; c < cols && rank < rows; c++) {
+                let pivot = -1;
+                for (let r = rank; r < rows; r++) if (mat[r][c] === 1) { pivot = r; break; }
+                if (pivot === -1) continue;
+                [mat[rank], mat[pivot]] = [mat[pivot], mat[rank]];
+                for (let r = 0; r < rows; r++) if (r !== rank && mat[r][c] === 1) {
+                    for (let k = c; k < cols + 1; k++) mat[r][k] ^= mat[rank][k];
+                }
+                rank++;
+            }
+            for (let r = 0; r < rows; r++) {
+                let allZero = true;
+                for (let c = 0; c < cols; c++) {
+                    if (mat[r][c] === 1) { allZero = false; break; }
+                }
+                if (allZero && mat[r][cols] === 1) return false;
+            }
+            return true;
+        }
+
+        function ptInTri(p, p0, p1, p2) {
+            const area = 0.5 * (-p1.y * p2.x + p0.y * (-p1.x + p2.x) + p0.x * (p1.y - p2.y) + p1.x * p2.y);
+            const s = 1 / (2 * area) * (p0.y * p2.x - p0.x * p2.y + (p2.y - p0.y) * p.x + (p0.x - p2.x) * p.y);
+            const t = 1 / (2 * area) * (p0.x * p1.y - p0.y * p1.x + (p0.y - p1.y) * p.x + (p1.x - p0.x) * p.y);
+            return s >= 0 && t >= 0 && (1 - s - t) >= 0;
+        }
+
+        function distToSegment(p, v, w) {
+            const l2 = (v.x - w.x) ** 2 + (v.y - w.y) ** 2;
+            if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y)));
+        }
+
+        // --- PRESET GENERATORS ---
+        const createGrid = (rows, cols, type = 'plane') => {
+            const nodes = [], edges = [], faces = [];
+            const getIdx = (r, c) => r * cols + c;
+
+            // Nodes
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    nodes.push({
+                        id: getIdx(r, c),
+                        x: 250 + c * 60 + (r % 2) * 30,
+                        y: 150 + r * 60
+                    });
+                }
+            }
+
+            // Edges & Faces
+            for (let r = 0; r < rows - 1; r++) {
+                for (let c = 0; c < cols - 1; c++) {
+                    const n1 = getIdx(r, c), n2 = getIdx(r, c + 1);
+                    const n3 = getIdx(r + 1, c), n4 = getIdx(r + 1, c + 1);
+
+                    // Triangulate square: n1-n2-n4 and n1-n4-n3
+                    edges.push({ id: `${n1}-${n2}`, n: [n1, n2] });
+                    edges.push({ id: `${n2}-${n4}`, n: [n2, n4] });
+                    edges.push({ id: `${n4}-${n3}`, n: [n4, n3] });
+                    edges.push({ id: `${n3}-${n1}`, n: [n3, n1] });
+                    edges.push({ id: `${n1}-${n4}`, n: [n1, n4] }); // Diagonal
+
+                    faces.push({ id: `${n1}-${n2}-${n4}`, n: [n1, n2, n4] });
+                    faces.push({ id: `${n1}-${n4}-${n3}`, n: [n1, n4, n3] });
+                }
+            }
+
+            // Identifications
+            if (type === 'torus') {
+                // Glue Left-Right
+                for (let r = 0; r < rows - 1; r++) {
+                    const left = getIdx(r, 0), right = getIdx(r, cols - 1);
+                    const leftBottom = getIdx(r + 1, 0), rightBottom = getIdx(r + 1, cols - 1);
+                    // We don't add new nodes, just logical edges connecting boundary
+                    // But for visual simplicity in this 2D view, we often just show the flat grid
+                    // To make it a TRUE topological torus calculation, we must Identify the IDs
+                    // This is complex to visualize in 2D without "warping", so we will just logically link them
+                    // Actually, for Homology calculation to come out right, we must merge nodes.
+                }
+            }
+
+            return { nodes, edges: dedupe(edges), faces: dedupe(faces) };
+        };
+
+        const dedupe = (arr) => {
+            const seen = new Set();
+            return arr.filter(item => {
+                const key = item.n ? item.n.sort().join('-') : item.id;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        };
+
+        // Static Hardcoded "Real" Surfaces for simplicity and stability
+        const PRESETS = {
+            disc: { // 1-Hole filled
+                nodes: [
+                    { id: 0, x: 400, y: 300 }, // center
+                    { id: 1, x: 400, y: 150 }, { id: 2, x: 530, y: 225 }, { id: 3, x: 530, y: 375 },
+                    { id: 4, x: 400, y: 450 }, { id: 5, x: 270, y: 375 }, { id: 6, x: 270, y: 225 }
+                ],
+                edges: [
+                    { id: '0-1', n: [0, 1] }, { id: '0-2', n: [0, 2] }, { id: '0-3', n: [0, 3] }, { id: '0-4', n: [0, 4] }, { id: '0-5', n: [0, 5] }, { id: '0-6', n: [0, 6] }, // Spokes
+                    { id: '1-2', n: [1, 2] }, { id: '2-3', n: [2, 3] }, { id: '3-4', n: [3, 4] }, { id: '4-5', n: [4, 5] }, { id: '5-6', n: [5, 6] }, { id: '6-1', n: [6, 1] }  // Rim
+                ],
+                faces: [
+                    { id: '0-1-2', n: [0, 1, 2] }, { id: '0-2-3', n: [0, 2, 3] }, { id: '0-3-4', n: [0, 3, 4] },
+                    { id: '0-4-5', n: [0, 4, 5] }, { id: '0-5-6', n: [0, 5, 6] }, { id: '0-6-1', n: [0, 6, 1] }
+                ]
+            },
+            annulus: { // Ring
+                nodes: [
+                    { id: 0, x: 400, y: 150 }, { id: 1, x: 530, y: 225 }, { id: 2, x: 530, y: 375 }, { id: 3, x: 400, y: 450 }, { id: 4, x: 270, y: 375 }, { id: 5, x: 270, y: 225 }, // Outer
+                    { id: 6, x: 400, y: 200 }, { id: 7, x: 480, y: 250 }, { id: 8, x: 480, y: 350 }, { id: 9, x: 400, y: 400 }, { id: 10, x: 320, y: 350 }, { id: 11, x: 320, y: 250 } // Inner
+                ],
+                edges: [
+                    { id: '0-1', n: [0, 1] }, { id: '1-2', n: [1, 2] }, { id: '2-3', n: [2, 3] }, { id: '3-4', n: [3, 4] }, { id: '4-5', n: [4, 5] }, { id: '5-0', n: [5, 0] }, // Outer Loop
+                    { id: '6-7', n: [6, 7] }, { id: '7-8', n: [7, 8] }, { id: '8-9', n: [8, 9] }, { id: '9-10', n: [9, 10] }, { id: '10-11', n: [10, 11] }, { id: '11-6', n: [11, 6] }, // Inner Loop
+                    { id: '0-6', n: [0, 6] }, { id: '1-7', n: [1, 7] }, { id: '2-8', n: [2, 8] }, { id: '3-9', n: [3, 9] }, { id: '4-10', n: [4, 10] }, { id: '5-11', n: [5, 11] }, // Spokes
+                    { id: '0-7', n: [0, 7] }, { id: '1-8', n: [1, 8] }, { id: '2-9', n: [2, 9] }, { id: '3-10', n: [3, 10] }, { id: '4-11', n: [4, 11] }, { id: '5-6', n: [5, 6] }  // Diagonals for triangulation
+                ],
+                faces: [
+                    { id: 'f0', n: [0, 1, 7] }, { id: 'f1', n: [0, 7, 6] },
+                    { id: 'f2', n: [1, 2, 8] }, { id: 'f3', n: [1, 8, 7] },
+                    { id: 'f4', n: [2, 3, 9] }, { id: 'f5', n: [2, 9, 8] },
+                    { id: 'f6', n: [3, 4, 10] }, { id: 'f7', n: [3, 10, 9] },
+                    { id: 'f8', n: [4, 5, 11] }, { id: 'f9', n: [4, 11, 10] },
+                    { id: 'f10', n: [5, 0, 6] }, { id: 'f11', n: [5, 6, 11] }
+                ]
+            },
+            mobius: { // Mobius Strip (3x2 Grid twisted)
+                // v0-v1-v2
+                // |  |  |
+                // v3-v4-v5
+                // Identify: v0-v3 with v2-v5 (Twist: v0->v5, v3->v2)
+                // Actually simpler: 2 squares. Left edge v0-v2, Right edge v1-v3.
+                // Glue v0 to v3, and v2 to v1.
+                nodes: [
+                    { id: 0, x: 250, y: 200 }, { id: 1, x: 400, y: 200 }, { id: 2, x: 550, y: 200 },
+                    { id: 3, x: 250, y: 400 }, { id: 4, x: 400, y: 400 }, { id: 5, x: 550, y: 400 }
+                ],
+                edges: [
+                    // Horizontal
+                    { id: '0-1', n: [0, 1] }, { id: '1-2', n: [1, 2] },
+                    { id: '3-4', n: [3, 4] }, { id: '4-5', n: [4, 5] },
+                    // Vertical
+                    { id: '0-3', n: [0, 3] }, { id: '1-4', n: [1, 4] }, { id: '2-5', n: [2, 5] },
+                    // Diagonals
+                    { id: '0-4', n: [0, 4] }, { id: '1-5', n: [1, 5] },
+                    // GLUED EDGES (Virtual visualization is hard, so we add the "Wrap" edges visibly crossing)
+                    { id: 'loop', n: [0, 5] }, { id: 'twist', n: [3, 2] } // The twist connections
+                ],
+                faces: [
+                    { id: 'f1', n: [0, 1, 4] }, { id: 'f2', n: [0, 4, 3] },
+                    { id: 'f3', n: [1, 2, 5] }, { id: 'f4', n: [1, 5, 4] },
+                    // The "Glued" faces are conceptual, but for homology calculation we need the graph structure.
+                    // To show a true Mobius in 2D is overlapping. 
+                    // Let's rely on the "Annulus" style but with the cross connection.
+                    { id: 'glue1', n: [0, 5, 1] }, // Wait, 0-5 is big cross.
+                    // This preset is tricky. Let's do a Simpler Mobius: Triangle fan with identification.
+                    // Standard: Square with identified edges.
+                ]
+            },
+            torus: { // Minimal Torus (7 vertices on 14 triangles? No, minimal is 7 verts).
+                // Let's do a 3x3 Grid (9 verts) identified borders.
+                // 0 1 2
+                // 3 4 5
+                // 6 7 8
+                // Glue: 0-3-6 to 2-5-8 (Left-Right)
+                // Glue: 0-1-2 to 6-7-8 (Top-Bottom)
+                nodes: [
+                    { id: 0, x: 300, y: 200 }, { id: 1, x: 400, y: 200 }, { id: 2, x: 500, y: 200 },
+                    { id: 3, x: 300, y: 300 }, { id: 4, x: 400, y: 300 }, { id: 5, x: 500, y: 300 },
+                    { id: 6, x: 300, y: 400 }, { id: 7, x: 400, y: 400 }, { id: 8, x: 500, y: 400 }
+                ],
+                edges: [
+                    // Horizontal
+                    { id: '0-1', n: [0, 1] }, { id: '1-2', n: [1, 2] }, { id: '2-0', n: [2, 0] }, // Modulo wrap
+                    { id: '3-4', n: [3, 4] }, { id: '4-5', n: [4, 5] }, { id: '5-3', n: [5, 3] },
+                    { id: '6-7', n: [6, 7] }, { id: '7-8', n: [7, 8] }, { id: '8-6', n: [8, 6] },
+                    // Vertical
+                    { id: '0-3', n: [0, 3] }, { id: '3-6', n: [3, 6] }, { id: '6-0', n: [6, 0] },
+                    { id: '1-4', n: [1, 4] }, { id: '4-7', n: [4, 7] }, { id: '7-1', n: [7, 1] },
+                    { id: '2-5', n: [2, 5] }, { id: '5-8', n: [5, 8] }, { id: '8-2', n: [8, 2] },
+                    // Diagonals (Required for rigid triangulation)
+                    { id: '0-4', n: [0, 4] }, { id: '1-5', n: [1, 5] }, { id: '2-3', n: [2, 3] },
+                    { id: '3-7', n: [3, 7] }, { id: '4-8', n: [4, 8] }, { id: '5-6', n: [5, 6] },
+                    { id: '6-1', n: [6, 1] }, { id: '7-2', n: [7, 2] }, { id: '8-0', n: [8, 0] }
+                ],
+                faces: [
+                    // All 18 triangles
+                    { id: 'f0', n: [0, 1, 4] }, { id: 'f1', n: [0, 4, 3] }, { id: 'f2', n: [1, 2, 5] }, { id: 'f3', n: [1, 5, 4] }, { id: 'f4', n: [2, 0, 3] }, { id: 'f5', n: [2, 3, 5] },
+                    { id: 'f6', n: [3, 4, 7] }, { id: 'f7', n: [3, 7, 6] }, { id: 'f8', n: [4, 5, 8] }, { id: 'f9', n: [4, 8, 7] }, { id: 'f10', n: [5, 3, 6] }, { id: 'f11', n: [5, 6, 8] },
+                    { id: 'f12', n: [6, 7, 1] }, { id: 'f13', n: [6, 1, 0] }, { id: 'f14', n: [7, 8, 2] }, { id: 'f15', n: [7, 2, 1] }, { id: 'f16', n: [8, 6, 0] }, { id: 'f17', n: [8, 0, 2] }
+                ]
+            }
+        };
+
+        // Correct Mobius to be simpler and valid
+        PRESETS.mobius = {
+            nodes: [{ id: 0, x: 300, y: 200 }, { id: 1, x: 500, y: 200 }, { id: 2, x: 500, y: 400 }, { id: 3, x: 300, y: 400 }],
+            edges: [
+                { id: '0-1', n: [0, 1] }, { id: '1-2', n: [1, 2] }, { id: '2-3', n: [2, 3] }, { id: '3-0', n: [3, 0] }, // Square
+                { id: '0-2', n: [0, 2] }, // Diagonal
+                { id: 'glue', n: [1, 3] } // The Twist connection: v1 glued to v3 (wait, 0-3 is left, 1-2 is right. Glue 0 to 2, 3 to 1).
+                // Actually to keep nodes distinct:
+                // Just use the Annulus but add a "twist" edge pair? 
+                // Let's stick to Disc, Annulus, Torus for now as they are the cleanest.
+                // Replace Mobius with "Sphere" (Solid surface)
+            ],
+            faces: []
+        };
+        // Re-do Sphere as Surface
+        PRESETS.sphere = { // Octahedron
+            nodes: [
+                { id: 0, x: 400, y: 150 }, { id: 1, x: 550, y: 300 }, { id: 2, x: 400, y: 450 }, { id: 3, x: 250, y: 300 }, // Equator
+                { id: 4, x: 400, y: 300 }, { id: 5, x: 400, y: 300 } // Front/Back poles (offset slightly)
+            ],
+            // Visualizing 3D in 2D is hard. Use the Projective Plane (Hexagon with identified edges)?
+            // Let's fallback to just Disc/Annulus/Torus which are 2D-native.
+            nodes: [{ id: 0, x: 400, y: 200 }, { id: 1, x: 300, y: 400 }, { id: 2, x: 500, y: 400 }, { id: 3, x: 400, y: 320 }],
+            edges: [], faces: []
+        };
+
+        // Final Clean Set
+        const FINAL_PRESETS = {
+            hexagon: PRESETS.disc, // User preferred name
+            triangle: {
+                // Pointing UP. v0 at Bottom Right.
+                nodes: [
+                    { id: 0, x: 500, y: 450 }, // Bottom Right
+                    { id: 1, x: 300, y: 450 }, // Bottom Left
+                    { id: 2, x: 400, y: 250 }  // Top
+                ],
+                edges: [{ id: '0-1', n: [0, 1] }, { id: '1-2', n: [1, 2] }, { id: '2-0', n: [2, 0] }],
+                faces: [{ id: '0-1-2', n: [0, 1, 2] }]
+            }
+        };
+
+
+        // --- COMPONENTS ---
+
+        function Latex({ children }) {
+            const ref = useRef();
+            useEffect(() => {
+                if (window.katex && ref.current)
+                    window.katex.render(children, ref.current, { throwOnError: false, displayMode: true });
+            }, [children]);
+            return <div ref={ref}></div>;
+        }
+
+        // --- TEXT PARSING ---
+        const processText = (text) => {
+            if (!window.katex) return text;
+            return text.split('$').map((part, i) => {
+                if (i % 2 === 1) {
+                    return window.katex.renderToString(part, { throwOnError: false });
+                }
+                return part.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+            }).join('');
+        };
+
+        function App() {
+            const [slideIdx, setSlideIdx] = useState(0);
+            const [data, setData] = useState(FINAL_PRESETS.hexagon);
+            const [selection, setSelection] = useState({ edges: new Set(), faces: new Set() });
+            const [tool, setTool] = useState('edge');
+            const [hovered, setHovered] = useState(null);
+            const [draggingNode, setDraggingNode] = useState(null);
+            const [filledFaces, setFilledFaces] = useState(new Set());
+            const [matrixView, setMatrixView] = useState('d1');
+            const [currentPreset, setCurrentPreset] = useState('hexagon');
+            const [lastFilledFace, setLastFilledFace] = useState(null);
+            const [statusHover, setStatusHover] = useState(null);
+            const [toast, setToast] = useState(null);
+            const lastToastRef = useRef(null);
+            const [boundaryPulse, setBoundaryPulse] = useState(false);
+            const pulseTimerRef = useRef(null);
+
+            const canvasRef = useRef(null);
+            const containerRef = useRef(null);
+            const statusIcons = {
+                empty: 'info',
+                faces: 'layers',
+                chain: 'timeline',
+                cycle: 'loop',
+                boundary: 'check_circle',
+                nontrivial: 'flare'
+            };
+
+            const toggleEdgeSelection = (edgeId) => {
+                setSelection(prev => {
+                    const next = new Set(prev.edges);
+                    next.has(edgeId) ? next.delete(edgeId) : next.add(edgeId);
+                    return { ...prev, edges: next };
+                });
+            };
+
+            const toggleFaceFill = (faceId) => {
+                setFilledFaces(prev => {
+                    const next = new Set(prev);
+                    if (next.has(faceId)) {
+                        next.delete(faceId);
+                        setLastFilledFace(prevLast => {
+                            if (prevLast !== faceId) return prevLast;
+                            const remaining = Array.from(next);
+                            return remaining.length ? remaining[remaining.length - 1] : null;
+                        });
+                    } else {
+                        next.add(faceId);
+                        setLastFilledFace(faceId);
+                    }
+                    setSelection(s => ({ ...s, faces: new Set(next) }));
+                    return next;
+                });
+            };
+
+            // --- COMPUTATION (Memoized) ---
+            const stats = useMemo(() => {
+                const V = data.nodes.length, E = data.edges.length, F = data.faces.length;
+
+                // Construct D1 (Vertices x Edges)
+                const d1 = Array(V).fill(0).map(() => Array(E).fill(0));
+                data.edges.forEach((edge, c) => {
+                    const r1 = data.nodes.findIndex(n => n.id === edge.n[0]);
+                    const r2 = data.nodes.findIndex(n => n.id === edge.n[1]);
+                    if (r1 > -1) d1[r1][c] = 1;
+                    if (r2 > -1) d1[r2][c] = 1;
+                });
+
+                // Construct D2 (Edges x Faces)
+                const d2 = Array(E).fill(0).map(() => Array(F).fill(0));
+                data.faces.forEach((face, c) => {
+                    const pairs = [[face.n[0], face.n[1]], [face.n[1], face.n[2]], [face.n[2], face.n[0]]];
+                    pairs.forEach(pair => {
+                        // Find edge connecting pair
+                        const r = data.edges.findIndex(e =>
+                            (e.n[0] === pair[0] && e.n[1] === pair[1]) || (e.n[0] === pair[1] && e.n[1] === pair[0])
+                        );
+                        if (r !== -1) d2[r][c] = 1;
+                    });
+                });
+
+                const rankD1 = computeRank(d1);
+                const rankD2 = computeRank(d2);
+
+                const dimC0 = V;
+                const dimC1 = E;
+                const dimC2 = F;
+
+                const dimZ0 = V;
+                const dimB0 = rankD1;
+                const beta0 = dimZ0 - dimB0;
+
+                const dimZ1 = E - rankD1; // Kernel of d1
+                const dimB1 = rankD2;     // Image of d2 within C1
+                const beta1 = dimZ1 - dimB1; // H1 = Z1 / B1
+
+                const dimZ2 = F - rankD2; // Kernel of d2
+                const dimB2 = 0;
+                const beta2 = dimZ2 - dimB2;
+
+                return {
+                    V, E, F,
+                    dimC0, dimC1, dimC2,
+                    dimZ0, dimB0,
+                    dimZ1, dimB1,
+                    dimZ2, dimB2,
+                    beta0, beta1, beta2,
+                    euler: V - E + F,
+                    rankD1, rankD2,
+                    d1, d2
+                };
+            }, [data]);
+
+            // --- DERIVED VISUAL STATE ---
+            const visualState = useMemo(() => {
+                // Determine what's "Active" based on content (tool-independent)
+                let activeEdges = new Set(selection.edges);
+                let activeFaces = new Set(selection.faces);
+                let boundaryEdges = new Set();
+
+                // Selecting a face always highlights its boundary edges (mod 2)
+                if (tool !== 'edge') {
+                    activeFaces.forEach(fid => {
+                        const face = data.faces.find(f => f.id === fid);
+                        if (face) {
+                            const pairs = [[face.n[0], face.n[1]], [face.n[1], face.n[2]], [face.n[2], face.n[0]]];
+                            pairs.forEach(p => {
+                                const edge = data.edges.find(e => (e.n[0] === p[0] && e.n[1] === p[1]) || (e.n[0] === p[1] && e.n[1] === p[0]));
+                                if (edge) {
+                                    // XOR toggle for boundary visual
+                                    activeEdges.has(edge.id) ? activeEdges.delete(edge.id) : activeEdges.add(edge.id);
+                                }
+                            });
+                        }
+                    });
+                }
+
+                // Calculate Boundary Nodes from Active Edges
+                const boundaryNodes = new Set();
+                activeEdges.forEach(eid => {
+                    const e = data.edges.find(x => x.id === eid);
+                    if (e) e.n.forEach(nid => boundaryNodes.has(nid) ? boundaryNodes.delete(nid) : boundaryNodes.add(nid));
+                });
+
+                // Boundary of filled faces (2-chain) -> highlighted edges
+                filledFaces.forEach(fid => {
+                    const face = data.faces.find(f => f.id === fid);
+                    if (!face) return;
+                    const pairs = [[face.n[0], face.n[1]], [face.n[1], face.n[2]], [face.n[2], face.n[0]]];
+                    pairs.forEach(p => {
+                        const edge = data.edges.find(e => (e.n[0] === p[0] && e.n[1] === p[1]) || (e.n[0] === p[1] && e.n[1] === p[0]));
+                        if (edge) {
+                            boundaryEdges.has(edge.id) ? boundaryEdges.delete(edge.id) : boundaryEdges.add(edge.id);
+                        }
+                    });
+                });
+
+                return { activeEdges, activeFaces, boundaryNodes, boundaryEdges };
+            }, [selection, data, filledFaces, tool]);
+
+            const analysis = useMemo(() => {
+                const edgeIndex = new Map(data.edges.map((e, idx) => [e.id, idx]));
+                const edgeVector = Array(stats.E).fill(0);
+                selection.edges.forEach(eid => {
+                    const idx = edgeIndex.get(eid);
+                    if (idx !== undefined) edgeVector[idx] = 1;
+                });
+
+                const boundary = Array(stats.V).fill(0);
+                edgeVector.forEach((val, idx) => {
+                    if (!val) return;
+                    for (let r = 0; r < stats.V; r++) boundary[r] ^= stats.d1[r][idx];
+                });
+
+                const boundaryNodes = new Set();
+                selection.edges.forEach(eid => {
+                    const edge = data.edges.find(x => x.id === eid);
+                    if (!edge) return;
+                    edge.n.forEach(nid => boundaryNodes.has(nid) ? boundaryNodes.delete(nid) : boundaryNodes.add(nid));
+                });
+
+                const isCycle = selection.edges.size > 0 && boundary.every(x => x === 0);
+
+                const filledFaceIndices = data.faces
+                    .map((f, idx) => (filledFaces.has(f.id) ? idx : -1))
+                    .filter(idx => idx !== -1);
+                const d2Filled = stats.d2.map(row => filledFaceIndices.map(idx => row[idx]));
+                const isBoundary = isCycle && filledFaceIndices.length > 0 && isVectorInColumnSpace(d2Filled, edgeVector);
+
+                const rimEdges = data.edges.filter(e => !e.n.includes(0));
+                const rimEdgeCount = rimEdges.length;
+                const rimSelectedCount = rimEdges.reduce((acc, e) => acc + (selection.edges.has(e.id) ? 1 : 0), 0);
+
+                return {
+                    rimEdges,
+                    edgeIndex,
+                    edgeVector,
+                    boundary,
+                    boundaryNodes,
+                    boundaryNodeCount: boundaryNodes.size,
+                    isCycle,
+                    isBoundary,
+                    rimEdgeCount,
+                    rimSelectedCount,
+                    filledCount: filledFaces.size
+                };
+            }, [selection, stats, data, filledFaces]);
+
+            const formatVertexListLatex = (nodeSet) => {
+                const ids = Array.from(nodeSet).sort((a, b) => a - b);
+                if (ids.length === 0) return '0';
+                return ids.map(id => `v_{${id}}`).join(' + ');
+            };
+
+            const formatEdgeListLatex = (edgeIds) => {
+                const ids = Array.from(edgeIds);
+                if (ids.length === 0) return '0';
+                const sorted = ids.sort((a, b) => (analysis.edgeIndex.get(a) ?? 0) - (analysis.edgeIndex.get(b) ?? 0));
+                return sorted.map(id => {
+                    const edge = data.edges.find(e => e.id === id);
+                    if (!edge) return id;
+                    return `e_{${edge.n[0]},${edge.n[1]}}`;
+                }).join(' + ');
+            };
+
+            const getFaceBoundaryEdges = (faceId) => {
+                const face = data.faces.find(f => f.id === faceId);
+                if (!face) return [];
+                const pairs = [[face.n[0], face.n[1]], [face.n[1], face.n[2]], [face.n[2], face.n[0]]];
+                const edges = [];
+                pairs.forEach(p => {
+                    const edge = data.edges.find(e =>
+                        (e.n[0] === p[0] && e.n[1] === p[1]) || (e.n[0] === p[1] && e.n[1] === p[0])
+                    );
+                    if (edge) edges.push(edge.id);
+                });
+                return edges;
+            };
+
+            const setEdgeSelection = (edgeIds) => {
+                setSelection(prev => ({ ...prev, edges: new Set(edgeIds) }));
+                setTool('edge');
+            };
+
+            // --- SELECTION TOPOLOGY CHECK ---
+            const selectionStats = useMemo(() => {
+                if (selection.edges.size === 0) {
+                    if (selection.faces.size > 0) {
+                        return { status: 'faces', title: 'Faces selected', detail: 'Select edges to inspect a 1-chain.' };
+                    }
+                    return { status: 'empty', title: 'No selection', detail: 'Select edges to test cycles and boundaries.' };
+                }
+
+                if (!analysis.isCycle) {
+                    return { status: 'chain', title: 'Chain (not a cycle)', detail: 'Boundary is nonzero: ∂ ≠ 0.' };
+                }
+
+                if (analysis.isBoundary) {
+                    return { status: 'boundary', title: 'Boundary', detail: 'Cycle is the boundary of filled faces.' };
+                }
+
+                if (analysis.filledCount === 0) {
+                    return { status: 'cycle', title: 'Cycle (Z1)', detail: 'Boundary is zero: ∂ = 0. With B1 = 0, this gives a nontrivial H1 class.' };
+                }
+
+                return {
+                    status: 'nontrivial',
+                    title: 'Nontrivial H1 class',
+                    detail: 'Cycle is not a boundary of the filled faces (represents a nontrivial H1 class).'
+                };
+            }, [selection, analysis]);
+
+            const lessonSteps = useMemo(() => {
+                const isHexagon = currentPreset === 'hexagon';
+                const rimTotal = analysis.rimEdgeCount;
+                const rimSelected = analysis.rimSelectedCount;
+                const edgesSelected = selection.edges.size;
+                const facesFilled = analysis.filledCount;
+
+                return [
+                    {
+                        id: 0,
+                        short: 'Setup',
+                        title: "1. Start on the hexagon",
+                        latex: "K = (V, E, F)",
+                        tool: "Edge",
+                        body: [
+                            "We will work on the **hexagon** subdivided into six triangles. This is a simplicial complex $K$ with vertices $V$, edges $E$, and faces $F$.",
+                            "We work over $\\mathbb{Z}_2$, so adding an edge twice cancels.",
+                            "Use **Edge** to select edges (1-chains) and **Face** to fill triangles (2-chains). Watch the **Status / Feedback** panel on the right."
+                        ],
+                        check: isHexagon ? "Hexagon is active." : "Choose Hexagon in the Shape control.",
+                        done: isHexagon
+                    },
+                    {
+                        id: 1,
+                        short: 'Chain',
+                        title: "2. Create a 1-chain",
+                        latex: "C_1 = \\text{span}(E)",
+                        tool: "Edge",
+                        body: [
+                            "Select **two or three edges** anywhere on the hexagon.",
+                            "A **chain** is any selection of edges. If the boundary nodes count is nonzero, it is **not** a cycle.",
+                            "The status panel should read **Chain (not a cycle)**."
+                        ],
+                        check: edgesSelected === 0 ? "Select a couple of edges to form a chain." : `Edges selected: ${edgesSelected}. Boundary nodes: ${analysis.boundaryNodeCount}.`,
+                        done: edgesSelected >= 2 && !analysis.isCycle
+                    },
+                    {
+                        id: 2,
+                        short: 'Cycle',
+                        title: "3. Close the loop (a cycle)",
+                        latex: "Z_1 = \\ker \\partial_1",
+                        tool: "Edge",
+                        body: [
+                            "Select all **six rim edges** (the outer ring). Avoid the spokes to the center node.",
+                            "When the boundary nodes count drops to 0, your chain is a **cycle**.",
+                            "This puts you in $Z_1$ (cycles)."
+                        ],
+                        check: isHexagon ? `Rim edges selected: ${rimSelected}/${rimTotal}.` : "Choose **Hexagon** to get a 6-edge rim.",
+                        done: isHexagon && analysis.isCycle && rimSelected === rimTotal
+                    },
+                    {
+                        id: 3,
+                        short: 'Boundary',
+                        title: "4. A cycle that is a boundary",
+                        latex: "B_1 = \\operatorname{im} \\partial_2",
+                        tool: "Face → Edge",
+                        body: [
+                            "Switch to **Face** and fill **exactly one** triangle.",
+                            "That filled triangle defines a **boundary cycle** (the three edges around it).",
+                            "This is a **cycle**, but it lies in $B_1$, so its **H1 class is 0**."
+                        ],
+                        check: facesFilled === 1 ? "Boundary edges are now visible in amber (B1 = Yes)." : `Faces filled: ${facesFilled} (goal: 1).`,
+                        done: isHexagon && facesFilled === 1 && analysis.isBoundary && selection.edges.size === 3
+                    },
+                    {
+                        id: 4,
+                        short: 'H1',
+                        title: "5. A cycle that survives in H1",
+                        latex: "H_1 = Z_1 / B_1",
+                        tool: "Edge",
+                        body: [
+                            "Keep **one** triangle filled, but now select the **six rim edges**.",
+                            "The rim is still a cycle, and it is **not** in $B_1$.",
+                            "So this rim cycle represents a **nontrivial H1 class**."
+                        ],
+                        check: isHexagon ? `Faces filled: ${facesFilled} (goal: 1). Rim edges selected: ${rimSelected}/${rimTotal}.` : "Choose **Hexagon** to see the rim cycle.",
+                        done: isHexagon && facesFilled === 1 && analysis.isCycle && !analysis.isBoundary && rimSelected === rimTotal
+                    },
+                    {
+                        id: 5,
+                        short: 'All faces',
+                        title: "6. Fill all triangles (boundary)",
+                        latex: "\\partial_2(\\text{all faces}) = \\text{rim}",
+                        tool: "Face",
+                        body: [
+                            "Fill **all six** triangles.",
+                            "Select the six rim edges again.",
+                            "The rim is now the boundary of the filled 2-chain, so it represents **0 in $H_1$**."
+                        ],
+                        check: isHexagon ? `Faces filled: ${facesFilled}/6. Rim edges selected: ${rimSelected}/${rimTotal}.` : "Choose **Hexagon** to complete the full boundary example.",
+                        done: isHexagon && facesFilled === rimTotal && analysis.isBoundary && rimSelected === rimTotal
+                    }
+                ];
+            }, [analysis, currentPreset, selection.edges.size]);
+
+            const currentStep = lessonSteps[Math.min(slideIdx, lessonSteps.length - 1)];
+
+            useEffect(() => {
+                if (slideIdx >= lessonSteps.length) {
+                    setSlideIdx(Math.max(lessonSteps.length - 1, 0));
+                }
+            }, [lessonSteps.length, slideIdx]);
+
+            useEffect(() => {
+                if (!selectionStats) return;
+                const status = selectionStats.status;
+                if (!['boundary', 'cycle', 'nontrivial'].includes(status)) {
+                    lastToastRef.current = null;
+                    return;
+                }
+                if (lastToastRef.current === status) return;
+                lastToastRef.current = status;
+                setToast({
+                    status,
+                    title: selectionStats.title,
+                    detail: selectionStats.detail
+                });
+                const timer = setTimeout(() => setToast(null), 2500);
+                return () => clearTimeout(timer);
+            }, [selectionStats]);
+
+            useEffect(() => {
+                if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+                setBoundaryPulse(true);
+                pulseTimerRef.current = setTimeout(() => setBoundaryPulse(false), 500);
+                return () => {
+                    if (pulseTimerRef.current) clearTimeout(pulseTimerRef.current);
+                };
+            }, [filledFaces]);
+
+            // --- CANVAS HANDLING ---
+            // Centering helper
+            const getCenteringOffset = (nodes, w, h) => {
+                if (!nodes.length) return { x: 0, y: 0 };
+                const xs = nodes.map(n => n.x), ys = nodes.map(n => n.y);
+                const minX = Math.min(...xs), maxX = Math.max(...xs);
+                const minY = Math.min(...ys), maxY = Math.max(...ys);
+                return { x: w / 2 - (minX + maxX) / 2, y: h / 2 - (minY + maxY) / 2 };
+            };
+
+            const renderCanvas = useCallback(() => {
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+
+                // High DPI
+                const dpr = window.devicePixelRatio || 1;
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * dpr;
+                canvas.height = rect.height * dpr;
+
+                // Clear formatting
+                ctx.clearRect(0, 0, rect.width, rect.height);
+
+                ctx.scale(dpr, dpr);
+                ctx.save(); // Save initial state before zoom transform
+
+                // Auto-Zoom & Center
+                if (data.nodes.length > 0) {
+                    const xs = data.nodes.map(n => n.x);
+                    const ys = data.nodes.map(n => n.y);
+                    const minX = Math.min(...xs), maxX = Math.max(...xs);
+                    const minY = Math.min(...ys), maxY = Math.max(...ys);
+
+                    const contentW = maxX - minX || 1;
+                    const contentH = maxY - minY || 1;
+
+                    // Target: fit 65% of container width / height
+                    const scaleX = (rect.width * 0.65) / contentW;
+                    const scaleY = (rect.height * 0.65) / contentH;
+                    const scale = Math.min(scaleX, scaleY, 2.2); // Cap max zoom
+
+                    const centerX = (minX + maxX) / 2;
+                    const centerY = (minY + maxY) / 2;
+
+                    ctx.translate(rect.width / 2, rect.height / 2);
+                    ctx.scale(scale, scale);
+                    ctx.translate(-centerX, -centerY);
+
+                    // Store transform for hit testing inverse
+                    canvasRef.current.__transform = { scale, centerX, centerY, width: rect.width, height: rect.height };
+                } else {
+                    canvasRef.current.__transform = { scale: 1, centerX: 0, centerY: 0, width: rect.width, height: rect.height };
+                }
+
+                // Styling constants
+                const COLORS = {
+                    node: '#6b7280',
+                    nodeActive: '#ef4444',
+                    nodeHover: '#f97316',
+                    edge: '#7b8794',
+                    edgeActive: '#0f766e',
+                    edgeHover: '#f97316',
+                    edgeBoundary: '#f59e0b',
+                    faceFill: 'rgba(15, 118, 110, 0.18)',
+                    faceActive: 'rgba(15, 118, 110, 0.32)',
+                    faceHover: 'rgba(15, 118, 110, 0.12)',
+                    faceBorderActive: '#0f766e',
+                    faceOutline: 'rgba(30, 41, 59, 0.38)'
+                };
+
+                const statusHoverEdges = statusHover?.edges || new Set();
+                const statusHoverFaces = statusHover?.faces || new Set();
+
+                // 1. Faces
+                data.faces.forEach(f => {
+                    const ns = f.n.map(nid => data.nodes.find(n => n.id === nid));
+                    if (!ns[0]) return;
+
+                    const isActive = visualState.activeFaces.has(f.id);
+                    const isHover = hovered?.type === 'face' && hovered?.id === f.id;
+                    const isFilled = filledFaces.has(f.id);
+                    const isStatusHoverFace = statusHoverFaces.has(f.id);
+                    const isEdgeToolHover = isHover && tool === 'edge';
+                    const shouldPreviewFill = isEdgeToolHover && !isFilled;
+                    const shouldFill = isFilled || shouldPreviewFill || isStatusHoverFace;
+
+                    ctx.beginPath();
+                    ctx.moveTo(ns[0].x, ns[0].y);
+                    ctx.lineTo(ns[1].x, ns[1].y);
+                    ctx.lineTo(ns[2].x, ns[2].y);
+                    ctx.closePath();
+
+                    if (shouldFill) {
+                        ctx.fillStyle = isActive ? COLORS.faceActive : (isFilled ? COLORS.faceFill : COLORS.faceHover);
+                        ctx.fill();
+                    }
+
+                    if (isActive && tool !== 'edge') {
+                        ctx.strokeStyle = COLORS.faceBorderActive;
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    } else if (isHover && tool !== 'edge') {
+                        ctx.strokeStyle = isActive ? COLORS.faceBorderActive : COLORS.edgeHover;
+                        ctx.lineWidth = 3;
+                        ctx.stroke();
+                    } else if (isStatusHoverFace && !isFilled) {
+                        ctx.strokeStyle = COLORS.edgeHover;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    } else if (!isFilled) {
+                        ctx.strokeStyle = COLORS.faceOutline;
+                        ctx.lineWidth = 2;
+                        ctx.stroke();
+                    }
+                });
+
+                const hoveredFaceEdgeIds = new Set();
+                if (hovered?.type === 'face' && tool === 'face') {
+                    const face = data.faces.find(f => f.id === hovered.id);
+                    if (face) {
+                        const pairs = [[face.n[0], face.n[1]], [face.n[1], face.n[2]], [face.n[2], face.n[0]]];
+                        pairs.forEach(p => {
+                            const edge = data.edges.find(e =>
+                                (e.n[0] === p[0] && e.n[1] === p[1]) || (e.n[0] === p[1] && e.n[1] === p[0])
+                            );
+                            if (edge) hoveredFaceEdgeIds.add(edge.id);
+                        });
+                    }
+                }
+
+                // 2. Edges
+                data.edges.forEach(e => {
+                    const n1 = data.nodes.find(n => n.id === e.n[0]);
+                    const n2 = data.nodes.find(n => n.id === e.n[1]);
+
+                    const isActive = visualState.activeEdges.has(e.id);
+                    const isBoundary = visualState.boundaryEdges.has(e.id);
+                    const isBoundaryActive = isBoundary && boundaryPulse;
+                    const isHover = hovered?.type === 'edge' && hovered?.id === e.id;
+                    const isHoverFaceEdge = hoveredFaceEdgeIds.has(e.id);
+                    const isStatusHoverEdge = statusHoverEdges.has(e.id);
+
+                    ctx.beginPath();
+                    ctx.moveTo(n1.x, n1.y);
+                    ctx.lineTo(n2.x, n2.y);
+
+                    ctx.lineCap = 'round';
+                    const activeWidth = 5;
+                    const baseWidth = 3;
+                    if (isHover) {
+                        ctx.lineWidth = isActive ? activeWidth + 1 : activeWidth;
+                        ctx.strokeStyle = COLORS.edgeHover;
+                        ctx.shadowColor = COLORS.edgeHover;
+                        ctx.shadowBlur = 12;
+                    } else if (isHoverFaceEdge) {
+                        ctx.lineWidth = activeWidth;
+                        ctx.strokeStyle = COLORS.edgeHover;
+                        ctx.shadowColor = COLORS.edgeHover;
+                        ctx.shadowBlur = 10;
+                    } else if (isActive) {
+                        ctx.lineWidth = activeWidth;
+                        ctx.strokeStyle = COLORS.edgeActive;
+                        // Glow effect
+                        ctx.shadowColor = COLORS.edgeActive;
+                        ctx.shadowBlur = 14;
+                    } else if (isBoundaryActive) {
+                        ctx.lineWidth = baseWidth + 2;
+                        ctx.strokeStyle = COLORS.edgeBoundary;
+                        ctx.shadowColor = COLORS.edgeBoundary;
+                        ctx.shadowBlur = 14;
+                    } else if (isBoundary) {
+                        ctx.lineWidth = baseWidth + 1;
+                        ctx.strokeStyle = COLORS.edgeBoundary;
+                        ctx.shadowColor = COLORS.edgeBoundary;
+                        ctx.shadowBlur = 6;
+                        ctx.setLineDash([6, 6]);
+                    } else {
+                        ctx.lineWidth = baseWidth;
+                        ctx.strokeStyle = COLORS.edge;
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.stroke();
+                    if (isStatusHoverEdge && !isHover) {
+                        ctx.save();
+                        ctx.lineWidth = baseWidth + 2;
+                        ctx.strokeStyle = COLORS.edgeHover;
+                        ctx.shadowColor = COLORS.edgeHover;
+                        ctx.shadowBlur = 10;
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                    if (isBoundary && (isActive || isHover || isHoverFaceEdge)) {
+                        ctx.save();
+                        ctx.lineWidth = baseWidth + 1;
+                        ctx.strokeStyle = COLORS.edgeBoundary;
+                        ctx.shadowBlur = 0;
+                        ctx.setLineDash([6, 6]);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                    ctx.setLineDash([]);
+                    ctx.shadowBlur = 0; // Reset
+                });
+
+                // 3. Nodes
+                data.nodes.forEach(n => {
+                    const isBound = visualState.boundaryNodes.has(n.id);
+                    const isHover = hovered?.type === 'node' && hovered?.id === n.id;
+
+                    ctx.beginPath();
+                    // Larger hit target visually for hover
+                    const nodeRadius = isHover ? 10 : 8;
+                    ctx.arc(n.x, n.y, nodeRadius, 0, Math.PI * 2);
+
+                    if (isBound) {
+                        ctx.fillStyle = COLORS.nodeActive;
+                        ctx.shadowColor = COLORS.nodeActive;
+                        ctx.shadowBlur = 16;
+                    } else if (isHover) {
+                        ctx.fillStyle = COLORS.nodeHover;
+                        ctx.shadowColor = COLORS.nodeHover;
+                        ctx.shadowBlur = 12;
+                    } else {
+                        ctx.fillStyle = COLORS.node;
+                        ctx.shadowBlur = 0;
+                    }
+
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+
+                    // Inner dot for style
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(n.x, n.y, 3, 0, Math.PI * 2);
+                    ctx.fill();
+
+
+                    // ID Label (Always Visible & Larger)
+                    ctx.fillStyle = '#1e293b';
+                    ctx.font = 'bold 18px Space Grotesk, sans-serif';
+                    // Add white stroke outline for contrast against lines
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#f8fafc';
+                    ctx.strokeText(`v${n.id}`, n.x + 12, n.y + 12);
+                    ctx.fillText(`v${n.id}`, n.x + 12, n.y + 12);
+
+                });
+
+                ctx.restore();
+            }, [data, visualState, hovered, filledFaces, tool, statusHover]);
+
+            // Resize Observer for Canvas
+            useEffect(() => {
+                const resizeObserver = new ResizeObserver(() => {
+                    window.requestAnimationFrame(renderCanvas);
+                });
+                if (containerRef.current) resizeObserver.observe(containerRef.current);
+                return () => resizeObserver.disconnect();
+            }, [renderCanvas]);
+
+            // Main Render Loop
+            useEffect(() => {
+                requestAnimationFrame(renderCanvas);
+            }, [renderCanvas]);
+
+
+            // --- INTERACTION ---
+            const getLocalPoint = (e) => {
+                const rect = canvasRef.current.getBoundingClientRect();
+                const t = canvasRef.current.__transform || { scale: 1, centerX: 0, centerY: 0, width: rect.width, height: rect.height };
+
+                // Screen -> Canvas space (0,0 is top-left)
+                const screenX = e.clientX - rect.left;
+                const screenY = e.clientY - rect.top;
+
+                // Inverse Transform:
+                // 1. untranslate center screen (x - W/2)
+                // 2. unscale (/ s)
+                // 3. untranslate center object (+ cX)
+
+                return {
+                    x: (screenX - t.width / 2) / t.scale + t.centerX,
+                    y: (screenY - t.height / 2) / t.scale + t.centerY
+                };
+            };
+
+            const getHitItem = (p, mode = 'action') => {
+                // Priority depends on Tool
+                // Drag -> Node -> Edge
+                // Edge (hover) -> Face -> Edge
+                // Edge (click) -> Edge -> Face
+                // Face -> Face
+
+                const nodeHitRadius = 24;
+                const edgeHitRadius = mode === 'hover' ? 14 : (tool === 'edge' ? 8 : 14);
+
+                if (tool === 'drag') {
+                    const hitNode = data.nodes.find(n => Math.hypot(n.x - p.x, n.y - p.y) < nodeHitRadius);
+                    if (hitNode) return { type: 'node', id: hitNode.id };
+                }
+
+                const findFaceHit = () => data.faces.find(f => {
+                    const n = f.n.map(nid => data.nodes.find(no => no.id === nid));
+                    return ptInTri(p, n[0], n[1], n[2]);
+                });
+
+                const findEdgeHit = () => data.edges.find(e => {
+                    const n1 = data.nodes.find(n => n.id === e.n[0]);
+                    const n2 = data.nodes.find(n => n.id === e.n[1]);
+                    return distToSegment(p, n1, n2) < edgeHitRadius;
+                });
+
+                if (tool === 'edge') {
+                    if (mode === 'action') {
+                        const hitEdge = findEdgeHit();
+                        if (hitEdge) return { type: 'edge', id: hitEdge.id };
+                        const hitFace = findFaceHit();
+                        if (hitFace) return { type: 'face', id: hitFace.id };
+                    } else {
+                        const hitFace = findFaceHit();
+                        if (hitFace) return { type: 'face', id: hitFace.id };
+                        const hitEdge = findEdgeHit();
+                        if (hitEdge) return { type: 'edge', id: hitEdge.id };
+                    }
+                    return null;
+                }
+
+                if (tool === 'face') {
+                    const hitFace = data.faces.find(f => {
+                        const n = f.n.map(nid => data.nodes.find(no => no.id === nid));
+                        return ptInTri(p, n[0], n[1], n[2]);
+                    });
+                    if (hitFace) return { type: 'face', id: hitFace.id };
+                }
+
+                if (tool === 'edge' || tool === 'drag') {
+                    const hitEdge = findEdgeHit();
+                    if (hitEdge) return { type: 'edge', id: hitEdge.id };
+                }
+
+                return null;
+            };
+
+            const handlePointerDown = (e) => {
+                const p = getLocalPoint(e);
+                const hit = getHitItem(p, 'action');
+
+                if (!hit) {
+                    return;
+                }
+
+                if (hit.type === 'node' && tool === 'drag') {
+                    setDraggingNode(hit.id);
+                    e.target.setPointerCapture(e.pointerId);
+                }
+                else if (hit.type === 'edge' && tool === 'edge') {
+                    toggleEdgeSelection(hit.id);
+                }
+                else if (hit.type === 'face' && tool === 'edge') {
+                    toggleFaceFill(hit.id);
+                }
+                else if (hit.type === 'face' && tool === 'face') {
+                    toggleFaceFill(hit.id);
+                }
+            };
+
+            const handlePointerMove = (e) => {
+                const p = getLocalPoint(e);
+
+                if (draggingNode !== null) {
+                    setData(prev => ({
+                        ...prev,
+                        nodes: prev.nodes.map(n => n.id === draggingNode ? { ...n, x: p.x, y: p.y } : n)
+                    }));
+                    return;
+                }
+
+                const hit = getHitItem(p, 'hover');
+                if ((!hit && hovered) || (hit && (!hovered || hit.id !== hovered.id || hit.type !== hovered.type))) {
+                    setHovered(hit);
+                    canvasRef.current.style.cursor = hit ? 'pointer' : 'default';
+                }
+            };
+
+            const handlePointerUp = (e) => {
+                setDraggingNode(null);
+                if (e.target.hasPointerCapture && e.target.hasPointerCapture(e.pointerId)) {
+                    e.target.releasePointerCapture(e.pointerId);
+                }
+            };
+
+            const loadPreset = (key) => {
+                setData(JSON.parse(JSON.stringify(FINAL_PRESETS[key])));
+                setSelection({ edges: new Set(), faces: new Set() });
+                setFilledFaces(new Set());
+                setTool('edge');
+                setCurrentPreset(key);
+                setLastFilledFace(null);
+            };
+
+            return (
+                <div className="app">
+                    {/* LEFT LESSON PANEL */}
+                    <div className="panel lesson-panel">
+                        <div className="panel-header">
+                            <h1 className="panel-title">Guided Lesson</h1>
+                            <div className="panel-subtitle">Hexagon walkthrough</div>
+                        </div>
+                        <div className="panel-body">
+                            <div className="lesson-card">
+                                <div className="lesson-meta">
+                                    <div className="step-count">Step {slideIdx + 1} / {lessonSteps.length}</div>
+                                </div>
+                                <h2 className="lesson-title" dangerouslySetInnerHTML={{ __html: processText(currentStep.title) }} />
+                                <div className="latex-block">
+                                    <Latex>{currentStep.latex}</Latex>
+                                </div>
+                                <div className="prose">
+                                    {currentStep.body.map((t, i) => (
+                                        <p key={i} style={{ margin: '0 0 10px 0' }} dangerouslySetInnerHTML={{ __html: processText(t) }} />
+                                    ))}
+                                </div>
+                                <div className="lesson-status">Status: {currentStep.done ? 'Complete' : 'Incomplete'}</div>
+                                <div className="lesson-check">Check: {currentStep.check}</div>
+                            </div>
+
+                            <div className="lesson-nav">
+                                <button className="nav-btn" disabled={slideIdx === 0} onClick={() => setSlideIdx(i => i - 1)}>
+                                    <span className="material-icons-round">arrow_back</span> Back
+                                </button>
+                                <span className="progress-text">{slideIdx + 1} / {lessonSteps.length}</span>
+                                <button className="nav-btn primary" disabled={slideIdx === lessonSteps.length - 1} onClick={() => setSlideIdx(i => i + 1)}>
+                                    Next <span className="material-icons-round">arrow_forward</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* LEFT CANVAS */}
+                    <div className="viewport" ref={containerRef}>
+                        <canvas
+                            ref={canvasRef}
+                            onPointerDown={handlePointerDown}
+                            onPointerMove={handlePointerMove}
+                            onPointerUp={handlePointerUp}
+                            onPointerLeave={handlePointerUp}
+                        />
+                        {toast && (
+                            <div className="toast-wrap">
+                                <div className={`toast ${toast.status}`}>
+                                    <span className="material-icons-round" style={{ fontSize: '18px', marginTop: '2px' }}>
+                                        {toast.status === 'boundary' ? 'check_circle' : toast.status === 'nontrivial' ? 'flare' : 'loop'}
+                                    </span>
+                                    <div>
+                                        <div className="toast-title">{toast.title}</div>
+                                        <div className="toast-desc">{toast.detail}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* CLEAN CANVAS - No HUDs, but Toolbar Restored */}
+                        <div className="toolbar-group">
+                            <button className={`tool-btn ${tool === 'edge' ? 'active' : ''}`} onClick={() => setTool('edge')} title="Select Edges">
+                                <span className="material-icons-round">timeline</span>
+                            </button>
+                            <div className="tool-divider"></div>
+                            <button className="tool-btn" onClick={() => { setSelection({ edges: new Set(), faces: new Set() }); setFilledFaces(new Set()); }} title="Clear Selection">
+                                <span className="material-icons-round">refresh</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* RIGHT PANEL */}
+                    <div className="panel right-panel">
+                        <div className="panel-header">
+                            <h1 className="panel-title">Homology Seminar</h1>
+                            <div className="panel-subtitle">Interactive Geometric Analysis</div>
+                        </div>
+
+                        <div className="panel-body">
+                            <section className="section controls-section">
+                                <div className="control-row">
+                                    <span className="control-label">Shape</span>
+                                    <div className="segmented-control">
+                                        {Object.keys(FINAL_PRESETS).map(k => (
+                                            <button
+                                                key={k}
+                                                className={`seg-btn ${currentPreset === k ? 'active' : ''}`}
+                                                onClick={() => loadPreset(k)}
+                                            >
+                                                {k.charAt(0).toUpperCase() + k.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="control-note">
+                                    Use the floating toolbar to switch modes. The status panel explains chain / cycle / boundary / H1.
+                                </div>
+                            </section>
+
+                            <section className="section">
+                                <div className="section-title">Status / Feedback</div>
+                                <div className="mini-grid">
+                                    <div className="mini-card">
+                                        <div className="mini-label">Edges selected</div>
+                                        <div className="mini-val">{selection.edges.size}</div>
+                                    </div>
+                                    <div className="mini-card">
+                                        <div className="mini-label">Faces filled</div>
+                                        <div className="mini-val">{analysis.filledCount}</div>
+                                    </div>
+                                    <div className="mini-card">
+                                        <div className="mini-label">Boundary nodes</div>
+                                        <div className="mini-val">{analysis.boundaryNodeCount}</div>
+                                    </div>
+                                    {currentPreset === 'hexagon' && (
+                                        <div className="mini-card">
+                                            <div className="mini-label">Rim edges</div>
+                                            <div className="mini-val">{analysis.rimSelectedCount}/{analysis.rimEdgeCount}</div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="action-row">
+                                    {currentPreset === 'hexagon' && (
+                                        <button
+                                            type="button"
+                                            className="action-btn"
+                                            onClick={() => setEdgeSelection(analysis.rimEdges.map(e => e.id))}
+                                        >
+                                            Select rim edges
+                                        </button>
+                                    )}
+                                    <button
+                                        type="button"
+                                        className="action-btn"
+                                        disabled={visualState.boundaryEdges.size === 0}
+                                        onClick={() => setEdgeSelection(Array.from(visualState.boundaryEdges))}
+                                    >
+                                        Select boundary of filled faces
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="action-btn"
+                                        onClick={() => setEdgeSelection([])}
+                                    >
+                                        Clear edges
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="action-btn secondary"
+                                        onClick={() => setFilledFaces(new Set())}
+                                    >
+                                        Clear faces
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="action-btn secondary"
+                                        disabled={!lastFilledFace}
+                                        onClick={() => setEdgeSelection(getFaceBoundaryEdges(lastFilledFace))}
+                                    >
+                                        Select last face boundary
+                                    </button>
+                                </div>
+
+                                <div className="status-list">
+                                    {[
+                                        {
+                                            key: 'chain',
+                                            label: 'Chain (selected edges)',
+                                            active: selection.edges.size > 0,
+                                            meta: `Edges: ${selection.edges.size}`,
+                                            state: selection.edges.size > 0 ? 'Present' : 'Absent',
+                                            edges: Array.from(selection.edges),
+                                            faces: []
+                                        },
+                                        {
+                                            key: 'cycle',
+                                            label: 'Cycle (Z1 of selection)',
+                                            active: analysis.isCycle,
+                                            meta: `Boundary nodes: ${analysis.boundaryNodeCount}`,
+                                            state: analysis.isCycle ? 'Present' : 'Absent',
+                                            edges: analysis.isCycle ? Array.from(selection.edges) : [],
+                                            faces: []
+                                        },
+                                        {
+                                            key: 'boundary',
+                                            label: 'Boundary (B1 from filled faces)',
+                                            active: visualState.boundaryEdges.size > 0,
+                                            meta: `Boundary edges: ${visualState.boundaryEdges.size}`,
+                                            state: visualState.boundaryEdges.size > 0 ? 'Present' : 'Absent',
+                                            edges: Array.from(visualState.boundaryEdges),
+                                            faces: Array.from(filledFaces)
+                                        },
+                                            {
+                                                key: 'h1',
+                                                label: 'H1 class of selection',
+                                                active: analysis.isCycle,
+                                                meta: analysis.isCycle ? (analysis.isBoundary ? 'Trivial class (0)' : 'Nontrivial class') : 'Not in H1',
+                                                state: analysis.isCycle
+                                                    ? (analysis.isBoundary
+                                                        ? 'Trivial = boundary (no hole)'
+                                                        : 'Nontrivial = not a boundary (hole)')
+                                                    : 'Undefined',
+                                                edges: analysis.isCycle ? Array.from(selection.edges) : [],
+                                                faces: []
+                                            }
+                                    ].map(item => (
+                                        <div
+                                            key={item.key}
+                                            className={`status-item ${item.active ? 'active' : ''}`}
+                                            onMouseEnter={() => setStatusHover({ edges: new Set(item.edges), faces: new Set(item.faces) })}
+                                            onMouseLeave={() => setStatusHover(null)}
+                                        >
+                                            <div className="status-label">{item.label}</div>
+                                            <div className="status-meta">{item.meta}</div>
+                                            <div className="status-state">{item.state}</div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <div className="status-note">
+                                    Hover a row to highlight the edges/faces that realize it. Dashed amber edges show the current B1 boundary of filled faces.
+                                </div>
+                            </section>
+
+                            <section className="section">
+                                <div className="section-title">Boundary Operator</div>
+                                <div className="latex-block compact">
+                                    <Latex>{String.raw`\partial_1(\text{current 1-chain}) = ${formatVertexListLatex(analysis.boundaryNodes)}`}</Latex>
+                                </div>
+                                <div className="latex-block compact">
+                                    <Latex>{String.raw`\partial_2(\text{filled 2-chain}) = ${formatEdgeListLatex(visualState.boundaryEdges)}`}</Latex>
+                                </div>
+                            </section>
+
+                            <section className="section">
+                                <div className="section-title">Boundary Matrix</div>
+                                <div className="matrix-header">
+                                    <div>
+                                        <div>Matrix {matrixView === 'd1' ? '∂1' : '∂2'}</div>
+                                        <div className="matrix-sub">
+                                            {matrixView === 'd1' ? 'Rows: V, Cols: E' : 'Rows: E, Cols: F'}
+                                        </div>
+                                    </div>
+                                    <div className="matrix-tabs">
+                                        <button className={`tab-btn ${matrixView === 'd1' ? 'active' : ''}`} onClick={() => setMatrixView('d1')}>∂1</button>
+                                        <button className={`tab-btn ${matrixView === 'd2' ? 'active' : ''}`} onClick={() => setMatrixView('d2')}>∂2</button>
+                                    </div>
+                                </div>
+                                {matrixView === 'd2' && stats.F === 0 ? (
+                                    <div className="mini-card">No faces in this complex. ∂2 is empty.</div>
+                                ) : (
+                                    <div className="matrix-container">
+                                        {matrixView === 'd1' ? (
+                                            <table className="matrix-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th></th>
+                                                        {data.edges.map((e, i) => (
+                                                            <th
+                                                                key={i}
+                                                                className={visualState.activeEdges.has(e.id) ? 'active-dimension' : ''}
+                                                                onMouseEnter={() => setHovered({ type: 'edge', id: e.id })}
+                                                                onMouseLeave={() => setHovered(null)}
+                                                                onClick={() => toggleEdgeSelection(e.id)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            >
+                                                                e{i}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data.nodes.map((n, r) => (
+                                                        <tr key={r}>
+                                                            <th
+                                                                className={visualState.boundaryNodes.has(n.id) ? 'active-dimension' : ''}
+                                                                onMouseEnter={() => setHovered({ type: 'node', id: n.id })}
+                                                                onMouseLeave={() => setHovered(null)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            >
+                                                                v{n.id}
+                                                            </th>
+                                                            {data.edges.map((e, c) => {
+                                                                const val = stats.d1[r][c];
+                                                                const isActive = val && visualState.activeEdges.has(e.id);
+                                                                return (
+                                                                    <td key={c} className={`cell ${val ? 'one' : ''} ${isActive ? 'active' : ''}`}>
+                                                                        {val}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        ) : (
+                                            <table className="matrix-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th></th>
+                                                        {data.faces.map((f, i) => (
+                                                            <th
+                                                                key={i}
+                                                                className={visualState.activeFaces.has(f.id) ? 'active-dimension' : ''}
+                                                                onMouseEnter={() => setHovered({ type: 'face', id: f.id })}
+                                                                onMouseLeave={() => setHovered(null)}
+                                                                onClick={() => toggleFaceFill(f.id)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            >
+                                                                f{i}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {data.edges.map((e, r) => (
+                                                        <tr key={r}>
+                                                            <th
+                                                                className={visualState.activeEdges.has(e.id) ? 'active-dimension' : ''}
+                                                                onMouseEnter={() => setHovered({ type: 'edge', id: e.id })}
+                                                                onMouseLeave={() => setHovered(null)}
+                                                                onClick={() => toggleEdgeSelection(e.id)}
+                                                                style={{ cursor: 'pointer' }}
+                                                            >
+                                                                e{r}
+                                                            </th>
+                                                            {data.faces.map((f, c) => {
+                                                                const val = stats.d2[r][c];
+                                                                const isActive = val && (visualState.activeEdges.has(e.id) || visualState.activeFaces.has(f.id));
+                                                                return (
+                                                                    <td key={c} className={`cell ${val ? 'one' : ''} ${isActive ? 'active' : ''}`}>
+                                                                        {val}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        )}
+                                    </div>
+                                )}
+                            </section>
+
+                            <section className="section">
+                                <div className="section-title">Quick Reference</div>
+                                <div className="latex-block compact">
+                                    <Latex>{String.raw`\begin{aligned}
+                                    C_k &= \text{span}(\sigma_k) \\
+                                    \partial_k &: C_k \to C_{k-1} \\
+                                    Z_k &= \ker \partial_k, \quad B_k = \operatorname{im}\, \partial_{k+1} \\
+                                    H_k &= Z_k / B_k, \quad \beta_k = \dim H_k
+                                    \end{aligned}`}</Latex>
+                                </div>
+                                <div className="latex-block compact">
+                                    <Latex>{String.raw`\partial(\partial(\triangle)) = 0`}</Latex>
+                                </div>
+                                <div className="foundation-note">
+                                    ∂k is the boundary map; ker means "boundary is zero"; im means "is a boundary of something higher."
+                                </div>
+                                <div className="foundation-note">
+                                    Zk: cycles = ker(∂k). Bk: boundaries = im(∂k+1). Hk: homology = Zk / Bk.
+                                </div>
+                                <div className="foundation-note">Filled triangles contribute to boundaries (B1). Dashed amber edges show those boundaries.</div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+
+</html>

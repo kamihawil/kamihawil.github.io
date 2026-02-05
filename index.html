@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Topological Data Analysis Demos</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f1220;
+      color: #f4f4f4;
+      margin: 0;
+      padding: 0;
+    }
+
+    header {
+      padding: 3rem 1.5rem 2rem;
+      text-align: center;
+    }
+
+    header h1 {
+      font-size: 2.2rem;
+      margin-bottom: 0.5rem;
+    }
+
+    header p {
+      font-size: 1.1rem;
+      color: #cfcfe6;
+      max-width: 700px;
+      margin: 0 auto;
+    }
+
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: #1a1d3a;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 1.3rem;
+    }
+
+    .card a {
+      margin-top: 1.2rem;
+      text-decoration: none;
+      text-align: center;
+      padding: 0.7rem 1rem;
+      background: #5b6cff;
+      color: white;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: background 0.2s ease;
+    }
+
+    .card a:hover {
+      background: #7b88ff;
+    }
+
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.85rem;
+      color: #9aa0ff;
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>Topological Data Analysis Demos</h1>
+    <p>
+      Interactive visualizations illustrating homology, persistence, of topology.
+  </header>
+
+  <main>
+    <div class="card">
+      <h2>2D Homology Demo</h2>
+      <a href="2D.html">Open Demo</a>
+    </div>
+
+    <div class="card">
+      <h2>3D Homology Demo</h2>
+      <a href="3D.html">Open Demo</a>
+    </div>
+
+    <div class="card">
+      <h2>Homology basics</h2>
+      <a href="basics.html">Open Sandbox</a>
+    </div>
+  </main>
+
+  <footer>
+    Built for live demonstrations & teaching
+  </footer>
+
+</body>
+</html>

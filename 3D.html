@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homology Demo 3D</title>
+
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            gap: 15px;
+            max-width: 1400px;
+            margin: 15px auto;
+            height: calc(100vh - 30px);
+        }
+
+        .main-panel {
+            flex: 1;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 15px;
+        }
+
+        .controls-panel {
+            width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        .title {
+            margin: 0;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: #555;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .slider-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #f8f9fa;
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #e9ecef;
+        }
+
+        .slider-val {
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            font-variant-numeric: tabular-nums;
+            min-width: 60px;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+            width: 190px;
+        }
+
+        input[type="checkbox"] {
+            cursor: pointer;
+            accent-color: #2c3e50;
+        }
+
+        .viewport {
+            flex: 1;
+            position: relative;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            background: #fff;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .zoom-hint {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ddd;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            color: #333;
+            pointer-events: none;
+        }
+
+        .barcode-container {
+            height: 28%;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .barcode-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border: 1px solid #eee;
+            background: #fff;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        button {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            background: #34495e;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            text-align: left;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #2c3e50;
+            transform: translateX(2px);
+        }
+
+        .category {
+            font-size: 11px;
+            font-weight: 800;
+            color: #999;
+            margin: 15px 0 5px;
+            text-transform: uppercase;
+        }
+
+        .toggle {
+            background: #ecf0f1;
+            color: #333;
+            text-align: center;
+        }
+
+        .toggle.active {
+            background: #27ae60;
+            color: white;
+        }
+
+        /* Dark Theme */
+        body.dark {
+            background: #121212;
+            color: #e0e0e0;
+        }
+
+        body.dark .main-panel {
+            background: #1e1e1e;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        body.dark .title {
+            color: #e0e0e0;
+        }
+
+        body.dark .header {
+            border-bottom-color: #333;
+        }
+
+        body.dark .checkbox-label {
+            color: #aaa;
+        }
+
+        body.dark .slider-box {
+            background: #2c2c2c;
+            border-color: #333;
+        }
+
+        body.dark .slider-val {
+            color: #ccc;
+        }
+
+        body.dark .viewport {
+            background: #121212;
+            border-color: #333;
+        }
+
+        body.dark .zoom-hint {
+            background: rgba(30, 30, 30, 0.9);
+            color: #aaa;
+            border-color: #444;
+        }
+
+        body.dark .barcode-container {
+            border-top-color: #333;
+        }
+
+        body.dark .barcode-scroll {
+            background: #1e1e1e;
+            border-color: #333;
+        }
+
+        body.dark .category {
+            color: #666;
+        }
+
+        body.dark .toggle {
+            background: #333;
+            color: #ccc;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel" data-type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        const { useState, useEffect, useRef } = React;
+
+        const PRESETS = {
+            randomScatter: () => Array.from({ length: 30 }, () => [(Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8]),
+            octahedron: () => [[2, 0, 0], [-2, 0, 0], [0, 2, 0], [0, -2, 0], [0, 0, 2], [0, 0, -2]],
+            sphereSurface: () => {
+                const pts = []; const n = 40; const r = 3.5;
+                for (let i = 0; i < n; i++) {
+                    const y = 1 - (i / (n - 1)) * 2;
+                    const radiusAtY = Math.sqrt(1 - y * y);
+                    const theta = (2 * Math.PI * i) / 1.61803398875;
+                    pts.push([Math.cos(theta) * radiusAtY * r, y * r, Math.sin(theta) * radiusAtY * r]);
+                }
+                return pts;
+            },
+            solidBall: () => {
+                const pts = [];
+                for (let i = 0; i < 30; i++) {
+                    const u = Math.random(), v = Math.random();
+                    const theta = 2 * Math.PI * u, phi = Math.acos(2 * v - 1), r = 3.5 * Math.cbrt(Math.random());
+                    pts.push([r * Math.sin(phi) * Math.cos(theta), r * Math.sin(phi) * Math.sin(theta), r * Math.cos(phi)]);
+                }
+                return pts;
+            },
+            torus: () => {
+                const pts = []; const R = 3.5, r = 1.2, n = 40;
+                for (let i = 0; i < n; i++) {
+                    const u = Math.random() * Math.PI * 2, v = Math.random() * Math.PI * 2;
+                    pts.push([(R + r * Math.cos(v)) * Math.cos(u), (R + r * Math.cos(v)) * Math.sin(u), r * Math.sin(v)]);
+                }
+                return pts;
+            },
+            structuredTorus: () => {
+                const pts = []; const R = 3, r = 1;
+                const major = 12, minor = 4;
+                for (let i = 0; i < major; i++) {
+                    for (let j = 0; j < minor; j++) {
+                        const u = (i / major) * Math.PI * 2;
+                        const v = (j / minor) * Math.PI * 2;
+                        pts.push([(R + r * Math.cos(v)) * Math.cos(u), (R + r * Math.cos(v)) * Math.sin(u), r * Math.sin(v)]);
+                    }
+                }
+                return pts;
+            },
+            s2: () => {
+                const pts = []; const n = 40; const r = 3.5;
+                for (let i = 0; i < n; i++) {
+                    const y = 1 - (i / (n - 1)) * 2;
+                    const radiusAtY = Math.sqrt(1 - y * y);
+                    const theta = (2 * Math.PI * i) / 1.61803398875;
+                    pts.push([Math.cos(theta) * radiusAtY * r, y * r, Math.sin(theta) * radiusAtY * r]);
+                }
+                return pts;
+            },
+            distantClusters: () => {
+                const pts = [];
+                for (let i = 0; i < 6; i++) pts.push([-10 + Math.random(), Math.random(), Math.random()]);
+                for (let i = 0; i < 6; i++) pts.push([10 + Math.random(), Math.random(), Math.random()]);
+                return pts;
+            },
+            tetrahedron: () => [
+                [2.5, 2.5, 2.5],
+                [2.5, -2.5, -2.5],
+                [-2.5, 2.5, -2.5],
+                [-2.5, -2.5, 2.5]
+            ]
+        };
+
+        const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+
+        function computePersistence(points) {
+            const N = points.length;
+            const simplices = [];
+            const dMap = new Map();
+            let maxDist = 0;
+
+            for (let i = 0; i < N; i++) simplices.push({ b: 0, dim: 0, n: [i] });
+
+            for (let i = 0; i < N; i++) {
+                for (let j = i + 1; j < N; j++) {
+                    const d = dist(points[i], points[j]);
+                    if (d > maxDist) maxDist = d;
+                    dMap.set(`${i},${j}`, d);
+                    simplices.push({ b: d / 2, dim: 1, n: [i, j] });
+                }
+            }
+
+            const triIndices = [];
+            for (let i = 0; i < N; i++) {
+                for (let j = i + 1; j < N; j++) {
+                    for (let k = j + 1; k < N; k++) {
+                        const d1 = dMap.get(`${i},${j}`), d2 = dMap.get(`${j},${k}`), d3 = dMap.get(`${i},${k}`);
+                        if (d1 === undefined || d2 === undefined || d3 === undefined) continue;
+                        triIndices.push([i, j, k]);
+                        simplices.push({ b: Math.max(d1, d2, d3) / 2, dim: 2, n: [i, j, k] });
+                    }
+                }
+            }
+
+            if (N <= 60) { 
+                for (let t = 0; t < triIndices.length; t++) {
+                    const [i, j, k] = triIndices[t];
+                    for (let l = k + 1; l < N; l++) {
+                        const d1 = dMap.get(`${i},${l}`), d2 = dMap.get(`${j},${l}`), d3 = dMap.get(`${k},${l}`);
+                        if (d1 !== undefined && d2 !== undefined && d3 !== undefined) {
+                            const edges = [dMap.get(`${i},${j}`), dMap.get(`${i},${k}`), dMap.get(`${i},${l}`), dMap.get(`${j},${k}`), dMap.get(`${j},${l}`), dMap.get(`${k},${l}`)];
+                            simplices.push({ b: Math.max(...edges) / 2, dim: 3, n: [i, j, k, l] });
+                        }
+                    }
+                }
+            }
+
+            simplices.sort((a, b) => (a.b - b.b) || (a.dim - b.dim));
+            const sMap = new Map();
+            simplices.forEach((s, i) => { s.id = i; sMap.set(s.n.join(','), i); });
+
+            const pivots = new Map(), reduced = new Map();
+            for (let j = 0; j < simplices.length; j++) {
+                const s = simplices[j];
+                if (s.dim === 0) continue;
+                let bound = new Set();
+                if (s.dim === 1) { bound.add(sMap.get(s.n[0].toString())); bound.add(sMap.get(s.n[1].toString())); }
+                else if (s.dim === 2) { const [u, v, w] = s.n; bound.add(sMap.get(`${u},${v}`)); bound.add(sMap.get(`${u},${w}`)); bound.add(sMap.get(`${v},${w}`)); }
+                else if (s.dim === 3) { const [u, v, w, x] = s.n; bound.add(sMap.get(`${u},${v},${w}`)); bound.add(sMap.get(`${u},${v},${x}`)); bound.add(sMap.get(`${u},${w},${x}`)); bound.add(sMap.get(`${v},${w},${x}`)); }
+
+                while (bound.size > 0) {
+                    const row = Math.max(...bound);
+                    if (pivots.has(row)) {
+                        const killer = pivots.get(row);
+                        const kBound = reduced.get(killer);
+                        for (const x of kBound) bound.has(x) ? bound.delete(x) : bound.add(x);
+                    } else { pivots.set(row, j); reduced.set(j, bound); break; }
+                }
+            }
+
+            const h0 = [], h1 = [], h2 = [], killers = new Set(pivots.values());
+            for (let i = 0; i < simplices.length; i++) {
+                const s = simplices[i];
+                if (killers.has(i)) continue;
+                const deathIdx = pivots.get(i);
+                const death = deathIdx !== undefined ? simplices[deathIdx].b : Infinity;
+                if (death > s.b) {
+                    if (s.dim === 0) h0.push([s.b, death]);
+                    if (s.dim === 1) h1.push([s.b, death]);
+                    if (s.dim === 2) h2.push([s.b, death]);
+                }
+            }
+            const sortFn = (a, b) => (b[1] - b[0]) - (a[1] - a[0]);
+            h0.sort(sortFn); h1.sort(sortFn); h2.sort(sortFn);
+            return { h0, h1, h2, dMap, maxDist };
+        }
+
+        function HomologyDemo() {
+            const [points, setPointsInternal] = useState(PRESETS.octahedron());
+            const [radius, setRadius] = useState(1.0);
+            const [isDark, setIsDark] = useState(false);
+            const [sliderMax, setSliderMax] = useState(4);
+            const [showBalls, setShowBalls] = useState(true);
+            const [showSolids, setShowSolids] = useState(false);
+            const [resetOnPreset, setResetOnPreset] = useState(true);
+            const [data, setData] = useState(null);
+
+            const mountRef = useRef(null);
+            const sceneRef = useRef(null);
+            const controlsRef = useRef(null);
+            const meshRefs = useRef({ points: null, balls: null, lines: null, tris: null, tets: null });
+            const barcodeRef = useRef(null);
+
+            const loadPreset = (generatorFn) => {
+                setPointsInternal(generatorFn());
+                if (resetOnPreset) setRadius(0);
+            };
+
+            useEffect(() => {
+                window.homology = {
+                    getPoints: () => points,
+                    setPoints: (newPoints) => Array.isArray(newPoints) ? setPointsInternal(newPoints) : console.error("Invalid points"),
+                    getData: () => data,
+                    setBg: (color) => { if (sceneRef.current) sceneRef.current.background = new THREE.Color(color); }
+                };
+            }, [points, data]);
+
+            useEffect(() => {
+                document.body.className = isDark ? 'dark' : '';
+                if (sceneRef.current) {
+                    sceneRef.current.background = new THREE.Color(isDark ? 0x111111 : 0xffffff);
+                }
+            }, [isDark]);
+
+            useEffect(() => {
+                const result = computePersistence(points);
+                setData(result);
+                const newMax = Math.ceil((result.maxDist / 2) * 1.1 * 10) / 10;
+                setSliderMax(newMax || 4);
+            }, [points]);
+
+            useEffect(() => {
+                if (!mountRef.current) return;
+                const scene = new THREE.Scene();
+                scene.background = new THREE.Color(isDark ? 0x111111 : 0xffffff);
+
+                const width = mountRef.current.clientWidth;
+                const height = mountRef.current.clientHeight;
+
+                const camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+                camera.position.set(0, 0, 16);
+
+                const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+                renderer.setSize(width, height);
+                mountRef.current.appendChild(renderer.domElement);
+
+                const ambLight = new THREE.AmbientLight(0xffffff, 0.7);
+                scene.add(ambLight);
+                const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                dirLight.position.set(10, 20, 10);
+                scene.add(dirLight);
+
+                const controls = new OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true;
+                controlsRef.current = controls;
+
+                sceneRef.current = scene;
+
+                let reqId;
+                const animate = () => {
+                    reqId = requestAnimationFrame(animate);
+                    controls.update();
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                return () => {
+                    cancelAnimationFrame(reqId);
+                    if (mountRef.current && renderer.domElement) mountRef.current.removeChild(renderer.domElement);
+                    renderer.dispose();
+                };
+            }, []);
+
+            useEffect(() => {
+                if (!sceneRef.current || !data) return;
+                const scene = sceneRef.current;
+
+                ['points', 'balls', 'lines', 'tris', 'tets'].forEach(key => {
+                    if (meshRefs.current[key]) {
+                        scene.remove(meshRefs.current[key]);
+                        if (meshRefs.current[key].geometry) meshRefs.current[key].geometry.dispose();
+                        if (meshRefs.current[key].material) meshRefs.current[key].material.dispose();
+                        meshRefs.current[key] = null;
+                    }
+                });
+
+                const ptGeo = new THREE.SphereGeometry(0.12, 16, 16);
+                const ptMat = new THREE.MeshPhongMaterial({ color: isDark ? 0xeeeeee : 0x111111 });
+                const ptMesh = new THREE.InstancedMesh(ptGeo, ptMat, points.length);
+                const dummy = new THREE.Object3D();
+                points.forEach((p, i) => {
+                    dummy.position.set(...p);
+                    dummy.updateMatrix();
+                    ptMesh.setMatrixAt(i, dummy.matrix);
+                });
+                scene.add(ptMesh);
+                meshRefs.current.points = ptMesh;
+
+                if (showBalls) {
+                    const ballGeo = new THREE.SphereGeometry(1, 32, 32);
+                    const ballMat = new THREE.MeshPhongMaterial({
+                        color: 0xaaccff,
+                        transparent: true,
+                        opacity: 0.1, 
+                        shininess: 80,
+                        depthWrite: false, 
+                        side: THREE.DoubleSide
+                    });
+                    const ballMesh = new THREE.InstancedMesh(ballGeo, ballMat, points.length);
+                    points.forEach((p, i) => {
+                        dummy.position.set(...p);
+                        dummy.scale.set(radius, radius, radius);
+                        dummy.updateMatrix();
+                        ballMesh.setMatrixAt(i, dummy.matrix);
+                    });
+                    scene.add(ballMesh);
+                    meshRefs.current.balls = ballMesh;
+                }
+
+                const lineVerts = [], triVerts = [], tetVerts = [];
+                const threshold = 2 * radius;
+
+                for (let i = 0; i < points.length; i++) {
+                    for (let j = i + 1; j < points.length; j++) {
+                        if (data.dMap.get(`${i},${j}`) <= threshold) {
+                            lineVerts.push(...points[i], ...points[j]);
+                            for (let k = j + 1; k < points.length; k++) {
+                                const d2 = data.dMap.get(`${j},${k}`), d3 = data.dMap.get(`${i},${k}`);
+                                if (d2 <= threshold && d3 <= threshold) {
+                                    triVerts.push(...points[i], ...points[j], ...points[k]);
+                                    if (showSolids) {
+                                        for (let l = k + 1; l < points.length; l++) {
+                                            const e1 = data.dMap.get(`${i},${l}`), e2 = data.dMap.get(`${j},${l}`), e3 = data.dMap.get(`${k},${l}`);
+                                            if (e1 <= threshold && e2 <= threshold && e3 <= threshold) {
+                                                const p1 = points[i], p2 = points[j], p3 = points[k], p4 = points[l];
+                                                tetVerts.push(...p1, ...p2, ...p3, ...p1, ...p2, ...p4, ...p1, ...p3, ...p4, ...p2, ...p3, ...p4);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                
+                if (lineVerts.length > 0) {
+                    const lineGeo = new THREE.BufferGeometry();
+                    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(lineVerts, 3));
+                    const lineMat = new THREE.LineBasicMaterial({
+                        color: isDark ? 0xcccccc : 0x333333,
+                        opacity: 0.8,
+                        transparent: true,
+                        depthWrite: false
+                    });
+                    const lines = new THREE.LineSegments(lineGeo, lineMat);
+                    scene.add(lines);
+                    meshRefs.current.lines = lines;
+                }
+
+                if (triVerts.length > 0) {
+                    const triGeo = new THREE.BufferGeometry();
+                    triGeo.setAttribute('position', new THREE.Float32BufferAttribute(triVerts, 3));
+                    triGeo.computeVertexNormals();
+                    const triMat = new THREE.MeshPhongMaterial({
+                        color: 0x4682b4,
+                        side: THREE.DoubleSide,
+                        opacity: 0.2,
+                        transparent: true,
+                        shininess: 30,
+                        flatShading: true,
+                        depthWrite: false
+                    });
+                    const tris = new THREE.Mesh(triGeo, triMat);
+                    scene.add(tris);
+                    meshRefs.current.tris = tris;
+                }
+
+                if (showSolids && tetVerts.length > 0) {
+                    const tetGeo = new THREE.BufferGeometry();
+                    tetGeo.setAttribute('position', new THREE.Float32BufferAttribute(tetVerts, 3));
+                    tetGeo.computeVertexNormals();
+                    const tetMat = new THREE.MeshPhongMaterial({
+                        color: 0xff4444, 
+                        side: THREE.DoubleSide,
+                        opacity: 0.1, 
+                        transparent: true,
+                        shininess: 10,
+                        flatShading: true,
+                        depthWrite: false
+                    });
+                    const tets = new THREE.Mesh(tetGeo, tetMat);
+                    scene.add(tets);
+                    meshRefs.current.tets = tets;
+                }
+
+            }, [points, radius, showBalls, showSolids, data, isDark]);
+
+            useEffect(() => {
+                if (!data || !barcodeRef.current) return;
+                const canvas = barcodeRef.current;
+                const ctx = canvas.getContext('2d');
+
+                const rowH = 8, gap = 3, headH = 20, pad = 8;
+                const maxRows = Math.max(data.h0.length, data.h1.length, data.h2.length);
+                const contentH = headH + (maxRows * (rowH + gap)) + 20;
+
+                const w = canvas.parentElement.clientWidth - 10;
+                canvas.width = w;
+                canvas.height = Math.max(contentH, canvas.parentElement.clientHeight);
+                const colWidth = (w - 2 * pad) / 3;
+                const scaleX = (colWidth - pad) / (sliderMax * 1.1);
+
+                ctx.clearRect(0, 0, w, canvas.height);
+
+                const theme = isDark ? { text: '#aaa', dead: '#444', grid: '#333' } : { text: '#666', dead: '#bdc3c7', grid: '#eee' };
+
+                const drawStack = (bars, colIndex, color, label) => {
+                    const startX = pad + (colIndex * colWidth);
+                    ctx.fillStyle = theme.text; ctx.font = 'bold 11px sans-serif'; ctx.fillText(label, startX, 15);
+                    let y = headH;
+                    ctx.lineWidth = rowH - 2; ctx.lineCap = 'round';
+
+                    bars.forEach(([start, end]) => {
+                        const isAlive = (radius >= start && radius < end);
+                        if (start <= radius) {
+                            ctx.strokeStyle = isAlive ? color : color.replace('1)', '0.3)');
+                            if (!isAlive) ctx.strokeStyle = theme.dead;
+                            const visEnd = Math.min(end === Infinity ? sliderMax * 1.2 : end, radius);
+                            if (visEnd >= start) {
+                                ctx.beginPath(); ctx.moveTo(startX + start * scaleX, y); ctx.lineTo(startX + visEnd * scaleX, y); ctx.stroke();
+                            }
+                        }
+                        y += rowH + gap;
+                    });
+                    const scanX = startX + radius * scaleX;
+                    if (scanX <= startX + colWidth - pad) {
+                        ctx.strokeStyle = 'rgba(231, 76, 60, 0.8)'; ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.moveTo(scanX, headH); ctx.lineTo(scanX, Math.max(y, canvas.height)); ctx.stroke();
+                    }
+                    if (colIndex < 2) {
+                        ctx.strokeStyle = theme.grid; ctx.lineWidth = 1;
+                        ctx.beginPath(); ctx.moveTo(startX + colWidth, 5); ctx.lineTo(startX + colWidth, canvas.height); ctx.stroke();
+                    }
+                };
+                drawStack(data.h0, 0, '#4682b4', 'H0 (Components)');
+                drawStack(data.h1, 1, '#e67e22', 'H1 (Tunnels)');
+                drawStack(data.h2, 2, '#2ecc71', 'H2 (Voids)');
+            }, [data, radius, sliderMax, isDark]);
+
+            return (
+                <div className="container">
+                    <div className="main-panel">
+                        <div className="header">
+                            <h2 className="title">3D Homology</h2>
+                            <div className="header-controls">
+                                <label className="checkbox-label">
+                                    <input type="checkbox" checked={isDark} onChange={(e) => setIsDark(e.target.checked)} />
+                                    Dark
+                                </label>
+                                <label className="checkbox-label">
+                                    <input type="checkbox" checked={resetOnPreset} onChange={(e) => setResetOnPreset(e.target.checked)} />
+                                    Auto-Reset
+                                </label>
+                                <div className="slider-box">
+                                    <span className="slider-val">r = {radius.toFixed(2)}</span>
+                                    <input type="range" min="0" max={sliderMax} step="0.01" value={radius > sliderMax ? sliderMax : radius} onChange={e => setRadius(parseFloat(e.target.value))} />
+                                    <span style={{ fontSize: '11px', color: '#999', width: '35px' }}>/{sliderMax}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="viewport" ref={mountRef}>
+                            <div className="zoom-hint">Left: Rotate • Right: Pan • Scroll: Zoom</div>
+                        </div>
+                        <div className="barcode-container">
+                            <div className="barcode-scroll">
+                                <canvas ref={barcodeRef} />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="controls-panel">
+                        <div className="category">Presets</div>
+                        <button onClick={() => loadPreset(PRESETS.randomScatter)}>Random Scatter</button>
+                        <button onClick={() => loadPreset(PRESETS.octahedron)}>Octahedron</button>
+                        <button onClick={() => loadPreset(PRESETS.tetrahedron)}>Tetrahedron</button>
+                        <button onClick={() => loadPreset(PRESETS.solidBall)}>Solid Ball</button>
+                        <button onClick={() => loadPreset(PRESETS.distantClusters)}>Distant Clusters</button>
+                        <div className="category">Topology</div>
+                        <button onClick={() => loadPreset(PRESETS.s2)}>Sphere S2 (H2 Void)</button>
+                        <button onClick={() => loadPreset(PRESETS.torus)}>Torus (H1, H2)</button>
+                        <button onClick={() => loadPreset(PRESETS.structuredTorus)}>Structured Torus</button>
+                        <div className="category">View</div>
+                        <button className={`toggle ${showBalls ? 'active' : ''}`} onClick={() => setShowBalls(!showBalls)}>Show Balls</button>
+                        <button className={`toggle ${showSolids ? 'active' : ''}`} style={{ marginTop: '5px' }} onClick={() => setShowSolids(!showSolids)}>Show Solids</button>
+                        <button style={{ marginTop: '15px', background: '#7f8c8d' }} onClick={() => { controlsRef.current.reset(); }}>Reset Camera</button>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<HomologyDemo />);
+    </script>
+</body>
+
+</html>
